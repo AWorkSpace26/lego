@@ -102,26 +102,35 @@ console.log('🎯 Average percentage discount:', averageDiscount);
 // 1. Create an object called `communities` to manipulate deals by community name 
 // The key is the community name
 // The value is the array of deals for this specific community
-//
-// Example:
-// const communities = {
-//   'community-name-1': [{...}, {...}, ..., {...}],
-//   'community-name-2': [{...}, {...}, ..., {...}],
-//   ....
-//   'community-name-n': [{...}, {...}, ..., {...}],
-// };
-//
+const communities = deals.reduce((acc, deal) => {
+  if (!acc[deal.community]) {
+    acc[deal.community] = [];
+  }
+  acc[deal.community].push(deal);
+  return acc;
+}, {});
 // 2. Log the variable
+console.log('🎯 Deals by community:', communities);
 // 3. Log the number of deals by community
+Object.entries(communities).forEach(([community, deals]) => {
+  console.log(`🎯 ${community}: ${deals.length} deals`);
+});
 
 // 🎯 TODO 9: Sort by price for each community
 // 1. For each community, sort the deals by discount price, from highest to lowest
+Object.keys(communities).forEach(community => {
+  communities[community] = communities[community].sort((a, b) => b.price - a.price); // Sorting by price descending
+});
 // 2. Log the sort
+console.log('🎯 Deals by community sorted by price:', communities);
 
 // 🎯 TODO 10: Sort by date for each community
 // 1. For each set, sort the deals by date, from old to recent
+Object.keys(communities).forEach(community => {
+  communities[community] = communities[community].sort((a, b) => new Date(a.published) - new Date(b.published)); // Sorting by date ascending
+});
 // 2. Log the sort
-
+console.log('🎯 Deals by community sorted by date:', communities);
 
 /**
  * 🧥
