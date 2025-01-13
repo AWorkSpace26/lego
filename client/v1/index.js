@@ -28,7 +28,9 @@ console.log(MY_FAVORITE_DEALERS[0]);
 // 🎯 TODO 1: The highest reduction
 // 0. I have 2 favorite lego sets shopping communities stored in MY_FAVORITE_DEALERS variable
 // 1. Create a new variable and assign it the link of the lego set with the highest reduction I can find on these 2 websites
+var cheapestDealer = 'https://www.dreamland.be/e/fr/dl/lego-city-le-train-de-marchandises-60336-146816?utm_source=awin_&utm_medium=affiliate&utm_campaign=www.dealabs.com_digidip_269979&utm_content=Sub+Networks_0&awc=16159_1736791142_5a555a286461e1ef2ccf30cbddafc846'; // Assuming the first dealer has the cheapest option
 // 2. Log the variable
+console.log('🎯 The cheapest dealer link:', cheapestDealer);
 
 /**
  * 🧱
@@ -41,30 +43,53 @@ console.log(MY_FAVORITE_DEALERS[0]);
 
 // 🎯 TODO 2: Number of deals
 // 1. Create a variable and assign it the number of deals
+var numberOfDeals = deals.length;
 // 2. Log the variable
+console.log('🎯 Number of deals:', numberOfDeals);
 
 // 🎯 TODO 3: Website name
 // 1. Create a variable and assign it the list of shopping community name only
+var communityNames = deals.map(deal => deal.community); 
 // 2. Log the variable
+console.log('🎯 Community names:', communityNames);
 // 3. Log how many shopping communities we have
+console.log('🎯 Number of shopping communities:', communityNames.length);
 
 // 🎯 TODO 4: Sort by price
 // 1. Create a function to sort the deals by price
+function sortDealsByPrice(deals) {
+  return deals.slice().sort((a, b) => a.price - b.price); // Sorting by price in ascending order
+}
 // 2. Create a variable and assign it the list of sets by price from lowest to highest
+var sortedDealsByPrice = sortDealsByPrice(deals);
 // 3. Log the variable
+console.log('🎯 Deals sorted by price:', sortedDealsByPrice);
 
 // 🎯 TODO 5: Sort by date
 // 1. Create a function to sort the deals by date
+function sortDealsByDate(deals) {
+  return deals.slice().sort((a, b) => new Date(b.published) - new Date(a.published)); // Newest to oldest
+}
+
+function sortDealsByDateOldestToNewest(deals) {
+  return deals.slice().sort((a, b) => new Date(a.published) - new Date(b.published)); // Oldest to newest
+}
 // 2. Create a variable and assign it the list of deals by date from recent to old
+var sortedDealsByDate = sortDealsByDate(deals);
 // 3. Log the variable
+console.log('🎯 Deals sorted by date:', sortedDealsByDate);
 
 // 🎯 TODO 6: Filter a specific percentage discount range
 // 1. Filter the list of deals between 50% and 75%
+var filteredDeals = deals.filter(deal => deal.discount >= 50 && deal.discount <= 75);
 // 2. Log the list
+console.log('🎯 Deals with discounts between 50% and 75%:', filteredDeals);
 
 // 🎯 TODO 7: Average percentage discount
 // 1. Determine the average percentage discount of the deals
+var averageDiscount = deals.reduce((sum, deal) => sum + deal.discount, 0) / deals.length;
 // 2. Log the average
+console.log('🎯 Average percentage discount:', averageDiscount);
 
 /**
  * 🏎
@@ -401,7 +426,7 @@ const VINTED = [
 // 1. Delete the item with the uuid `f2c5377c-84f9-571d-8712-98902dcbb913`
 // 2. Log the new list of items
 
-// 🎯 TODO 5: Save a favorite item
+// 🎯 TODO 15: Save a favorite item
 // We declare and assign a variable called `sealedCamera`
 let sealedCamera = {
   link: "https://www.vinted.fr/items/5563396347-lego-43230-omaggio-a-walter-disney-misb",
@@ -432,7 +457,7 @@ sealedCamera = {
 // 3. Update `camera` property with `favorite` to true WITHOUT changing sealedCamera properties
 
 
-// 🎯 TODO 11: Compute the profitability
+// 🎯 TODO 16: Compute the profitability
 // From a specific deal called `deal`
 const deal = {
   'title':  'La caméra Hommage à Walt Disney',
