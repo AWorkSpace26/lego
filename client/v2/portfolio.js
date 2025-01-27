@@ -142,7 +142,7 @@ selectLegoSetIds.addEventListener('change', async (event) => {
 
     // Met à jour les indicateurs avec les données des ventes Vinted
     document.querySelector('#indicators').style.display = 'block';
-    renderIndicators(currentPagination, vintedSales); // Appel de renderIndicators
+    renderIndicators(currentPagination, vintedSales);
   }
 });
 
@@ -158,6 +158,11 @@ selectSort.addEventListener('change', () => {
   switch (selectedOption) {
     case 'no-filter':
       sortedDeals = [...currentDeals];
+      break;
+
+    case 'favorites':
+      const favorites = getFavorites();
+      sortedDeals = currentDeals.filter(deal => favorites.includes(deal.uuid));
       break;
       
     case 'best-discount':
@@ -199,17 +204,21 @@ selectSort.addEventListener('change', () => {
  * Render list of deals
  * @param  {Array} deals
  */
-const renderDeals = deals => {
+const renderDeals = (deals) => {
   const section = document.querySelector('#deals');
   const fragment = document.createDocumentFragment();
   const div = document.createElement('div');
   const template = deals
     .map(deal => {
+      const isFavorite = checkIfFavorite(deal.uuid); // Vérifie si le deal est favori
       return `
       <div class="deal" id=${deal.uuid}>
         <span>${deal.id}</span>
-        <a href="${deal.link}">${deal.title}</a>
+        <a href="${deal.link}" target="_blank">${deal.title}</a> <!-- Ouvre le lien dans un nouvel onglet -->
         <span>${deal.price}</span>
+        <button class="favorite-btn" data-uuid="${deal.uuid}">
+          ${isFavorite ? 'Remove from Favorites' : 'Save as Favorite'}
+        </button>
       </div>
     `;
     })
@@ -217,9 +226,19 @@ const renderDeals = deals => {
 
   div.innerHTML = template;
   fragment.appendChild(div);
-  sectionDeals.innerHTML = '<h2>Deals</h2>';
-  sectionDeals.appendChild(fragment);
+  section.innerHTML = '<h2>Deals</h2>';
+  section.appendChild(fragment);
+
+  // Ajout des gestionnaires d'événements pour les boutons "Save as Favorite"
+  document.querySelectorAll('.favorite-btn').forEach(button => {
+    button.addEventListener('click', (event) => {
+      const uuid = event.target.dataset.uuid;
+      toggleFavorite(uuid); // Ajoute ou retire des favoris
+      renderDeals(deals); // Re-render pour mettre à jour l'état des boutons
+    });
+  });
 };
+
 
 /**
  * Render page selector
@@ -303,19 +322,6 @@ const renderIndicators = (pagination, sales = []) => {
   }
 };
 
-
-
-
-/**
- * Render all
- */
-const render = (deals, pagination) => {
-  renderDeals(deals);
-  renderPagination(pagination);
-  renderIndicators(pagination);
-  renderLegoSetIds(deals)
-};
-
 /**
  * Render vinted sales
  * @param  {Array} sales
@@ -324,12 +330,11 @@ const renderVintedSales = (sales) => {
   const section = document.querySelector('#vinted-sales');
   const fragment = document.createDocumentFragment();
   const div = document.createElement('div');
-
   const template = sales
     .map(sale => {
       return `
       <div class="vinted-sale" id=${sale.uuid}>
-        <a href="${sale.link}" target="_blank">${sale.title}</a>
+        <a href="${sale.link}" target="_blank">${sale.title}</a> <!-- Ouvre le lien dans un nouvel onglet -->
         <span>${sale.price} €</span>
       </div>
     `;
@@ -341,4 +346,36 @@ const renderVintedSales = (sales) => {
 
   section.innerHTML = '<h2>Vinted Sales</h2>';
   section.appendChild(fragment);
+};
+
+/**
+ * Render all
+ */
+const render = (deals, pagination) => {
+  renderDeals(deals);
+  renderPagination(pagination);
+  renderLegoSetIds(deals)
+};
+
+
+//GESTION DES FAVORIS
+const getFavorites = () => {  // Récupère les favoris depuis localStorage
+  const favorites = localStorage.getItem('favorites');
+  return favorites ? JSON.parse(favorites) : [];
+};
+
+const toggleFavorite = (uuid) => { // Ajoute ou supprime un deal des favoris
+  const favorites = getFavorites();
+  if (favorites.includes(uuid)) { //retire
+    const updatedFavorites = favorites.filter(fav => fav !== uuid);
+    localStorage.setItem('favorites', JSON.stringify(updatedFavorites));
+  } else { //ajoute
+    favorites.push(uuid);
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+  }
+};
+
+const checkIfFavorite = (uuid) => { // Vérifie si un deal est favori
+  const favorites = getFavorites();
+  return favorites.includes(uuid);
 };
