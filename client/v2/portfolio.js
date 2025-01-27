@@ -105,33 +105,44 @@ document.addEventListener('DOMContentLoaded', async () => { //SE LANCE QUAND ON 
 /**
  * Select the number of deals to display
  */
-selectShow.addEventListener('change', async (event) => { //SE LANCE QUAND ON CHANGE LE NOMBRE DE VARIABLE QUE L'ON VEUT AFFICHER
-  const deals = await fetchDeals(1, parseInt(event.target.value)); //MET DANS deals LES VALEURS RECUP GRACE A L'API  
-  console.log(deals)
+selectShow.addEventListener('change', async (event) => {
+  const deals = await fetchDeals(1, parseInt(event.target.value)); // MET DANS deals LES VALEURS RECUP GRACE A L'API
+  console.log(deals);
   currentPagination.pageSize = parseInt(event.target.value);
 
   setCurrentDeals(deals);
   render(currentDeals, currentPagination);
+
+   // Réinitialise le sélecteur d'ID sur "All" et déclenche l'événement change
+   const legoSetSelector = document.querySelector('#lego-set-id-select');
+   legoSetSelector.value = 'All';
+   legoSetSelector.dispatchEvent(new Event('change')); // Déclenche le change
 });
 
 /**
  * Select the page to display
  */
-selectPage.addEventListener('change', async (event) => { //SE LANCE QUAND ON CHANGE LA PAGE
+selectPage.addEventListener('change', async (event) => {
   const realPagination = currentPagination.pageSize;
   const deals = await fetchDeals(parseInt(event.target.value), currentPagination.pageSize);
 
   setCurrentDeals(deals);
   currentPagination.pageSize = realPagination;
   render(currentDeals, currentPagination);
+
+   // Réinitialise le sélecteur d'ID sur "All" et déclenche l'événement change
+   const legoSetSelector = document.querySelector('#lego-set-id-select');
+   legoSetSelector.value = 'All';
+   legoSetSelector.dispatchEvent(new Event('change')); // Déclenche le change
 });
+
 
 selectLegoSetIds.addEventListener('change', async (event) => {
   const selectedLegoId = event.target.value;
 
   if (selectedLegoId === 'All') {
     render(currentDeals, currentPagination); 
-    document.querySelector('#vinted-sales').innerHTML = ''; 
+    document.querySelector('#vinted-sales').style.display = 'none';
     document.querySelector('#indicators').style.display = 'none';
   } else {
     const filteredDeals = currentDeals.filter(deal => deal.id === selectedLegoId);
@@ -142,6 +153,7 @@ selectLegoSetIds.addEventListener('change', async (event) => {
 
     // Met à jour les indicateurs avec les données des ventes Vinted
     document.querySelector('#indicators').style.display = 'block';
+    document.querySelector('#vinted-sales').style.display = 'block';
     renderIndicators(currentPagination, vintedSales);
   }
 });
