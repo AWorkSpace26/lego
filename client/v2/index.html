@@ -1,50 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>🧱 Lego | Predictability of a lego set deal</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🧱 Lego | Predictability of a Lego Set Deal</title>
+    <style>
+      /* General Styles */
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f9f9f9;
+        color: #333;
+      }
+      header {
+        background-color: #007BFF;
+        color: white;
+        padding: 1rem;
+        text-align: center;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+      section {
+        margin: 1.5rem auto;
+        padding: 1rem;
+        max-width: 900px;
+        background: white;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+      }
+      h2 {
+        border-bottom: 2px solid #007BFF;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+        color: #007BFF;
+      }
+      label {
+        font-weight: bold;
+        margin-right: 0.5rem;
+      }
+      select {
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      .options-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+      .options-container > div {
+        flex: 1 1 200px;
+      }
+      button {
+        padding: 0.5rem 1rem;
+        background-color: #00ff26;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      #deals, #vinted-sales {
+        padding: 1rem;
+        background: #f1f1f1;
+        border-radius: 8px;
+        text-align: center;
+      }
+      .no-results {
+        font-style: italic;
+        color: #888;
+      }
+    </style>
   </head>
   <body>
-    <h1>Lego</h1>
+    <header>
+      <h1>🧱 Lego Deals Explorer</h1>
+    </header>
+
     <section id="options">
-      <div id="show">
-        <label for="show-select">Show:</label>
-        <select name="show" id="show-select">
-          <option value="6">6</option>
-          <option value="12">12</option>
-          <option value="24">24</option>
-        </select>
-      </div>
-      <div id="page">
-        <label for="page-select">Go to page:</label>
-        <select name="page" id="page-select"> </select>
-      </div>
-      <div id="filters">
-        <span>By best discount</span>
-        <span>By most commented</span>
-        <span>By hot deals</span>
-      </div>
-      <div id="sort">
-        <label for="sort-select">Sort:</label>
-        <select name="sort" id="sort-select">
-          <option value="no-filter">No filter</option>
-          <option value="favorites">Filter by Favorites</option>
-          <option value="most-commented">Most commented</option>
-          <option value="best-discount">Best discount</option>
-          <option value="price-asc">Cheaper</option>
-          <option value="price-desc">Expensive</option>
-          <option value="date-asc">Recently published</option>
-          <option value="date-desc">Anciently published</option>
-        </select>
-      </div>
+      <h2>Options</h2>
+      <fieldset class="options-container">
+        <div>
+          <label for="show-select">Show:</label>
+          <select name="show" id="show-select">
+            <option value="6">6</option>
+            <option value="12">12</option>
+            <option value="24">24</option>
+          </select>
+        </div>
+        <div>
+          <label for="page-select">Go to page:</label>
+          <select name="page" id="page-select"></select>
+        </div>
+        <div>
+          <label for="sort-select">Sort:</label>
+          <select name="sort" id="sort-select">
+            <option value="no-filter">No filter</option>
+            <option value="favorites">Filter by Favorites</option>
+            <option value="most-commented">Most commented</option>
+            <option value="best-discount">Best discount</option>
+            <option value="price-asc">Cheaper</option>
+            <option value="price-desc">Expensive</option>
+            <option value="date-asc">Recently published</option>
+            <option value="date-desc">Anciently published</option>
+          </select>
+        </div>
+      </fieldset>
     </section>
+
     <section id="lego">
-      <h2>Lego sets</h2>
+      <h2>Filter Lego Sets</h2>
       <div>
-        <label>Lego set id:</label>
-        <select id="lego-set-id-select"></select> 
+        <label for="lego-set-id-select">Lego set ID:</label>
+        <select id="lego-set-id-select"></select>
       </div>
     </section>
+
     <section id="indicators" style="display: none;">
       <h2>Indicators</h2>
       <div>
@@ -76,9 +153,19 @@
         <span id="lifetime-value">0 days</span>
       </div>
     </section>
-    <section id="deals"></section>
-    <section id="vinted-sales"></section>
+
+    <section id="deals">
+      <h2>Deals</h2>
+      <p class="no-results">No deals available. Please adjust your filters.</p>
+    </section>
+
+    <section id="vinted-sales" style="display: none;">
+      <h2>Vinted Sales</h2>
+      <p class="no-results">No Vinted sales available for this set.</p>
+    </section>
+
     <script type="text/javascript" charset="UTF-8" src="utils.js"></script>
     <script type="text/javascript" charset="UTF-8" src="portfolio.js"></script>
   </body>
 </html>
+
