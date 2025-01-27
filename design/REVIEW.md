@@ -1,11 +1,11 @@
 # Design Review
 
-## Low-fidelity sketches
+## Low-fidelity sketches  
 ![Mon logo](sketch.jpg)
 ## List of taken considerations for sketches/design
 - Je voulais que les éléments soient suffisamment espacer les uns des autres et correctement situé pour que l'utilisateur ne soit pas surcharger d'information avec les différents éléments. J'ai donc découpé la page en 3 parties distincts et me suit assuré que chaque élément est une place cohérente à l'intéreur de ces parties
 - J'ai essayé de visualiser ce qui se passerait si l'utilisateur cliquait à différents endroits et où est ce que ça l'emènerait.
-- J'ai réfléchi à quelles sont les informations les plus importantes pour l'utilisateur et essayer de les mettre le plus en évidence possible. Comme la fonction favoris ou les filtres essentiels au projet
+- J'ai réfléchi à quelles sont les informations les plus importantes pour l'utilisateur et essayer de les mettre le plus en évidence possible. Comme la fonction favoris ou les filtres essentiels au projet.
 
 ## Main problem we are solving for
 Nous souhaitons faire en sorte que l'utilisateur puissent trouver des deals sur des legos sets. Ainsi nous regroupons sur notre site les offres incroyables qui existent et nous lui indiquons lequel est le plus intéréssant d'acheter en fonction de ses besoins (filtres, les plus hots et les infos sur les dernières ventes vinted par exemple)
