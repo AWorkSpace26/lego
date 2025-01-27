@@ -27,6 +27,9 @@
       <div id="sort">
         <label for="sort-select">Sort:</label>
         <select name="sort" id="sort-select">
+          <option value="no-filter">No filter</option>
+          <option value="most-commented">Most commented</option>
+          <option value="best-discount">Best discount</option>
           <option value="price-asc">Cheaper</option>
           <option value="price-desc">Expensive</option>
           <option value="date-asc">Recently published</option>
@@ -44,31 +47,36 @@
     <section id="indicators">
       <h2>Indicators</h2>
       <div>
-        <span>Number of deals</span>
+        <span>Number of deals:</span>
         <span id="nbDeals">0</span>
       </div>
       <div>
-        <span>Number of sales</span>
+        <span>Number of sales:</span>
         <span id="nbSales">0</span>
       </div>
       <div>
-        <span>p5 sales price value</span>
-        <span>0</span>
+        <span>Average Price:</span>
+        <span id="average-price">0</span>
       </div>
       <div>
-        <span>p25 sales price value</span>
-        <span>0</span>
+        <span>P5 sales price value:</span>
+        <span id="p5-price">0 €</span>
       </div>
       <div>
-        <span>p50 sales price value</span>
-        <span>0</span>
+        <span>P25 sales price value:</span>
+        <span id="p25-price">0 €</span>
       </div>
       <div>
-        <span>Lifetime value</span>
-        <span>10 days</span>
+        <span>P50 sales price value:</span>
+        <span id="p50-price">0 €</span>
+      </div>
+      <div>
+        <span>Lifetime value:</span>
+        <span id="lifetime-value">0 days</span>
       </div>
     </section>
     <section id="deals"></section>
+    <section id="vinted-sales"></section>
     <script type="text/javascript" charset="UTF-8" src="utils.js"></script>
     <script type="text/javascript" charset="UTF-8" src="portfolio.js"></script>
   </body>
