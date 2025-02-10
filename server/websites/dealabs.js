@@ -11,29 +11,35 @@ const parse = data => {
 
   return $('article.thread')
     .map((i, element) => {
-      // Extraire le titre
-      const title = $(element).find('a.thread-link').text().trim();
+      // 🔹 1. Extraire le titre du deal
+      const title = $(element).find('a.cept-tt.thread-link').text().trim();
 
-      // Extraire le lien du deal
-      let link = $(element).find('a.thread-link').attr('href');
+      // 🔹 2. Extraire le lien du deal (corrigé pour éviter la duplication)
+      let link = $(element).find('a.cept-tt.thread-link').attr('href');
       if (link && !link.startsWith('https')) {
         link = `https://www.dealabs.com${link}`;
       }
 
-      // Extraire le prix (parfois mal formaté)
-      let priceText = $(element).find('.thread-price').first().text().trim();
-      let price = priceText ? parseFloat(priceText.replace(/[^\d,.]/g, '').replace(',', '.')) : null;
-      if (isNaN(price)) price = null;
+      // 🔹 3. Extraire le prix (nouvelle méthode plus robuste)
+      let priceText = $(element).find('.thread-price').text().trim();
+      let price = priceText.match(/(\d+[\.,]?\d*)/);
+      price = price ? parseFloat(price[0].replace(',', '.')) : null;
 
-      // Extraire la réduction (parfois absente)
-      let discountText = $(element).find('.space--ml-1').first().text().trim();
-      let discount = discountText ? parseInt(discountText.replace(/[^\d]/g, '')) : null;
-      if (isNaN(discount)) discount = null;
+      // 🔹 4. Extraire la réduction (nouvelle méthode)
+      let discountText = $(element).find('.textBadge--green').text().trim();
+      let discount = discountText.match(/-?(\d+)%/);
+      discount = discount ? parseInt(discount[1]) : null;
+
+      // 🔹 5. Extraire le nombre de commentaires (nouvelle méthode)
+      let commentsText = $(element).find('a[title="Commentaires"]').text().trim();
+      let comments = commentsText.match(/(\d+)/);
+      comments = comments ? parseInt(comments[0]) : 0;
 
       return {
         title,
         price,
         discount,
+        comments,
         link
       };
     })
@@ -72,4 +78,5 @@ module.exports.scrape = async url => {
     return null;
   }
 };
+
 
