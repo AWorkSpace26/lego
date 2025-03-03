@@ -1,5 +1,6 @@
 const fetch = require('node-fetch');
 const cheerio = require('cheerio');
+const fs = require('fs');
 
 /**
  * Parse webpage data response
@@ -39,14 +40,23 @@ const parse = data => {
  */
 module.exports.scrape = async url => {
   const response = await fetch(url);
+  try {
+    const response = await fetch(url);
 
-  if (response.ok) {
+    if (!response.ok) {
+      console.error(`❌ Erreur lors du scraping: ${response.statusText}`);
+      return null;
+    }
+
     const body = await response.text();
+    const deals = parse(body);
 
-    return parse(body);
-  }
+    fs.writeFileSync('data_avenudelabrique.json', JSON.stringify(deals, null, 2));
+    console.log('✅ Données scrappées et enregistrées dans data.json');
 
-  console.error(response);
-
-  return null;
+    return deals;
+  } catch (error) {
+    console.error('❌ Erreur lors du scraping:', error);
+    return null;
+  } 
 };
