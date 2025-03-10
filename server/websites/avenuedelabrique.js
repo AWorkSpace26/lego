@@ -52,7 +52,7 @@ module.exports.scrape = async url => {
     const deals = parse(body);
 
     fs.writeFileSync('data_avenudelabrique.json', JSON.stringify(deals, null, 2));
-    console.log('✅ Données scrappées et enregistrées dans data.json');
+    console.log('✅ Données scrappées et enregistrées');
 
     return deals;
   } catch (error) {
