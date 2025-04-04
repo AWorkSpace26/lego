@@ -1,44 +1,9 @@
 const fetch = require('node-fetch');
 const cheerio = require('cheerio');
-const { connectDB } = require('../db'); // Connexion MongoDB
+const { connectDB } = require('../db'); // MongoDB connection
 
 const BASE_URL = 'https://www.dealabs.com/groupe/lego?page=';
-
-/**
- * Récupère dynamiquement le nombre total de pages depuis Dealabs
- * @returns {Number} Nombre total de pages à scraper
- */
-const getTotalPages = async () => {
-  try {
-    const url = `${BASE_URL}1&hide_expired=true`; // On commence par la première page
-    console.log(`🔍 Récupération du nombre total de pages depuis ${url}...`);
-    
-    const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!response.ok) {
-      console.error(`❌ Erreur HTTP ${response.status} sur ${url}`);
-      return 1; // On retourne au moins 1 page par défaut
-    }
-
-    const body = await response.text();
-    const $ = cheerio.load(body);
-
-    // 🔥 Sélectionne le bouton qui contient le dernier numéro de page
-    try {
-      
-  
-      console.log(`Nombre total de pages : ${totalPages}`);
-  } catch (error) {
-      console.error("Erreur lors de la récupération du nombre total de pages :", error);
-  }
-  
-
-    console.log(`✅ Nombre total de pages trouvé : ${totalPages}`);
-    return totalPages;
-  } catch (error) {
-    console.error('❌ Erreur lors de la récupération du nombre de pages:', error.message);
-    return 1; // Si erreur, on scrape au moins 1 page
-  }
-};
+const MAX_PAGES = 5; // Number of pages to scrape
 
 /**
  * Parse webpage data response
@@ -47,7 +12,7 @@ const getTotalPages = async () => {
  */
 const parse = (data) => {
   const $ = cheerio.load(data);
-  let deals = [];
+  const deals = [];
 
   $('div.js-vue2').each((i, element) => {
     const jsonData = $(element).attr('data-vue2');
@@ -58,7 +23,7 @@ const parse = (data) => {
         if (deal.props && deal.props.thread) {
           const thread = deal.props.thread;
 
-          // 📌 On ignore les deals expirés
+          // Ignore expired deals
           if (!thread.isExpired) {
             deals.push({
               threadId: thread.threadId,
@@ -74,7 +39,7 @@ const parse = (data) => {
           }
         }
       } catch (error) {
-        console.error('❌ Erreur de parsing JSON:', error.message);
+        console.error('❌ Error parsing JSON:', error.message);
       }
     }
   });
@@ -84,7 +49,7 @@ const parse = (data) => {
 
 /**
  * Scrape a single page
- * @param {Number} page - Numéro de page
+ * @param {Number} page - Page number
  * @returns {Array} deals
  */
 const scrapePage = async (page) => {
@@ -98,58 +63,58 @@ const scrapePage = async (page) => {
     });
 
     if (!response.ok) {
-      console.error(`❌ Erreur HTTP ${response.status} sur ${url}`);
+      console.error(`❌ HTTP Error ${response.status} on ${url}`);
       return [];
     }
 
     const body = await response.text();
     return parse(body);
   } catch (error) {
-    console.error(`❌ Erreur lors du scraping de ${url}:`, error.message);
+    console.error(`❌ Error scraping ${url}:`, error.message);
     return [];
   }
 };
 
 /**
- * Scrape toutes les pages dynamiquement et stocke dans MongoDB
+ * Scrape the first few pages and store in MongoDB
  */
-const scrapeAllPages = async () => {
-  console.log(`🚀 Détection du nombre de pages avant scraping...`);
-  const totalPages = await getTotalPages(); // 🔥 Récupère dynamiquement le nombre de pages
-
-  console.log(`🚀 Scraping de ${totalPages} pages...`);
+const scrapeFirstPages = async () => {
+  console.log(`🚀 Scraping the first ${MAX_PAGES} pages...`);
   const db = await connectDB();
   const collection = db.collection('dealabs');
 
-  // 🔥 Étape 1 : Supprime tous les anciens deals
+  // Step 1: Remove old deals
   await collection.deleteMany({});
-  console.log('🗑 Anciennes données supprimées !');
+  console.log('🗑 Old data removed!');
 
   let allDeals = [];
 
-  for (let page = 1; page <= totalPages; page++) {
+  for (let page = 1; page <= MAX_PAGES; page++) {
     const deals = await scrapePage(page);
     allDeals = allDeals.concat(deals);
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Pause pour éviter le blocage IP
+
+    // Pause to avoid IP blocking
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
   if (allDeals.length > 0) {
-    // 🔥 Étape 2 : Insère les nouveaux deals
-    await collection.insertMany(allDeals, { ordered: false }).catch((err) => {
-      console.error('⚠️ Certains deals existent déjà:', err.message);
-    });
-
-    console.log(`✅ ${allDeals.length} nouveaux deals enregistrés dans MongoDB`);
+    // Step 2: Insert new deals
+    try {
+      await collection.insertMany(allDeals, { ordered: false });
+      console.log(`✅ ${allDeals.length} new deals saved to MongoDB`);
+    } catch (err) {
+      console.error('⚠️ Some deals already exist:', err.message);
+    }
   } else {
-    console.log('❌ Aucun deal trouvé');
+    console.log('❌ No deals found');
   }
 
-  return allDeals; // ⬅️ Retourne les deals pour `sandbox.js`
+  return allDeals; // Return deals for further use
 };
 
 /**
- * Permet à `sandbox.js` d'utiliser `scrapeAllPages()`
+ * Export the scrape function for use in other files
  */
 module.exports = {
-  scrape: scrapeAllPages,
+  scrape: scrapeFirstPages,
 };

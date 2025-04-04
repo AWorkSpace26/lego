@@ -20,15 +20,15 @@ const connectDB = async () => {
 };
 
 /**
- * Trouve les deals avec la meilleure réduction (discount > 50%)
+ * Trouve les deals avec une température > 50
  */
 const findBestDiscountDeals = async () => {
   try {
     const db = await connectDB();
-    const collection = db.collection('deals');
+    const collection = db.collection('dealabs'); // Utilisation de la collection dealabs
 
-    const deals = await collection.find({ discount: { $gt: 50 } }).toArray();
-    console.log(`✅ ${deals.length} deals trouvés avec un discount > 50%`);
+    const deals = await collection.find({ temperature: { $gt: 50 } }).toArray();
+    console.log(`✅ ${deals.length} deals trouvés avec une température > 50`);
     return deals;
   } catch (error) {
     console.error('❌ Erreur lors de la récupération des meilleurs discounts:', error);
@@ -36,14 +36,14 @@ const findBestDiscountDeals = async () => {
 };
 
 /**
- * Trouve les deals les plus commentés (comments > 15)
+ * Trouve les deals les plus commentés (commentCount > 15)
  */
 const findMostCommentedDeals = async () => {
   try {
     const db = await connectDB();
-    const collection = db.collection('deals');
+    const collection = db.collection('dealabs'); // Utilisation de la collection dealabs
 
-    const deals = await collection.find({ comments: { $gt: 15 } }).toArray();
+    const deals = await collection.find({ commentCount: { $gt: 15 } }).toArray();
     console.log(`✅ ${deals.length} deals trouvés avec plus de 15 commentaires`);
     return deals;
   } catch (error) {
@@ -58,7 +58,7 @@ const findMostCommentedDeals = async () => {
 const findDealsSortedByPrice = async (order = "asc") => {
   try {
     const db = await connectDB();
-    const collection = db.collection('deals');
+    const collection = db.collection('dealabs'); // Utilisation de la collection dealabs
 
     const sortOrder = order === "asc" ? 1 : -1;
     const deals = await collection.find().sort({ price: sortOrder }).toArray();
@@ -77,10 +77,10 @@ const findDealsSortedByPrice = async (order = "asc") => {
 const findDealsSortedByDate = async (order = "asc") => {
   try {
     const db = await connectDB();
-    const collection = db.collection('deals');
+    const collection = db.collection('dealabs'); // Utilisation de la collection dealabs
 
     const sortOrder = order === "asc" ? 1 : -1;
-    const deals = await collection.find().sort({ published: sortOrder }).toArray();
+    const deals = await collection.find().sort({ publishedAt: sortOrder }).toArray();
 
     console.log(`✅ Deals triés par date (${order})`);
     return deals;
@@ -90,36 +90,21 @@ const findDealsSortedByDate = async (order = "asc") => {
 };
 
 /**
- * Trouve toutes les ventes pour un LEGO donné
- * @param {String} legoSetId - L'ID du set LEGO à rechercher
+ * Trouve un deal spécifique par ID
+ * @param {String} dealId - ID du deal à rechercher
  */
-const findSalesForLegoSetId = async (legoSetId) => {
-  try {
-    const db = await connectDB();
-    const collection = db.collection('sales');
-
-    const sales = await collection.find({ legoSetId }).toArray();
-    console.log(`✅ ${sales.length} ventes trouvées pour le LEGO Set ID ${legoSetId}`);
-    return sales;
-  } catch (error) {
-    console.error('❌ Erreur lors de la récupération des ventes pour un LEGO Set ID:', error);
-  }
-};
-
 const findDealById = async (dealId) => {
   try {
     const db = await connectDB();
-    const collection = db.collection('deals');
+    const collection = db.collection('dealabs'); // Utilisation de la collection dealabs
 
     // 🔹 Convertir en ObjectId uniquement si l'ID est valide
     let query = { _id: dealId };
     if (ObjectId.isValid(dealId)) {
       query = { _id: ObjectId.createFromHexString(dealId) };
     }
-    console.log(dealId)
-    console.log(query)
+
     const deal = await collection.findOne(query);
-    console.log(deal)
     if (!deal) {
       console.log(`❌ Aucun deal trouvé avec l'ID ${dealId}`);
       return null;
@@ -129,31 +114,25 @@ const findDealById = async (dealId) => {
     return deal;
   } catch (error) {
     console.error('❌ Erreur lors de la récupération du deal par ID:', error);
-    return 1;
   }
 };
 
-
-
-
-
-
 /**
- * Trouve toutes les ventes effectuées au cours des 3 dernières semaines
+ * Trouve les deals publiés au cours des 3 dernières semaines
  */
-const findRecentSales = async () => {
+const findRecentDeals = async () => {
   try {
     const db = await connectDB();
-    const collection = db.collection('sales');
+    const collection = db.collection('dealabs'); // Utilisation de la collection dealabs
 
     const threeWeeksAgo = new Date();
     threeWeeksAgo.setDate(threeWeeksAgo.getDate() - 21);
 
-    const sales = await collection.find({ published: { $gte: threeWeeksAgo } }).toArray();
-    console.log(`✅ ${sales.length} ventes trouvées datant de moins de 3 semaines`);
-    return sales;
+    const deals = await collection.find({ publishedAt: { $gte: threeWeeksAgo } }).toArray();
+    console.log(`✅ ${deals.length} deals trouvés datant de moins de 3 semaines`);
+    return deals;
   } catch (error) {
-    console.error('❌ Erreur lors de la récupération des ventes récentes:', error);
+    console.error('❌ Erreur lors de la récupération des deals récents:', error);
   }
 };
 
@@ -164,8 +143,8 @@ if (require.main === module) {
     await findMostCommentedDeals();
     await findDealsSortedByPrice("asc");
     await findDealsSortedByDate("desc");
-    await findSalesForLegoSetId("42156");
-    await findRecentSales();
+    await findDealById("67f0168e3cf40a3b845e96ad");
+    await findRecentDeals();
     process.exit(0);
   })();
 }
@@ -177,7 +156,6 @@ module.exports = {
   findMostCommentedDeals,
   findDealsSortedByPrice,
   findDealsSortedByDate,
-  findSalesForLegoSetId,
-  findRecentSales,
-  findDealById
+  findDealById,
+  findRecentDeals,
 };
