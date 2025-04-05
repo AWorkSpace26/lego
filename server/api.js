@@ -11,7 +11,7 @@ const {
   findDealsSortedByDate,
   findSalesForLegoSetId,
   findRecentSales
-} = require('./db'); // Import database functions
+} = require('./db'); // Toutes les fonctions de db.js
 
 const PORT = 8092;
 const app = express();
@@ -23,33 +23,21 @@ app.use(helmet());
 app.use(bodyParser.json());
 app.options('*', cors());
 
-// ✔️ Basic Test Route
+// ✔️ Test de base
 app.get('/', (req, res) => {
   res.send({ ack: true });
 });
 
-// ✔️ Search Deals
+
+
+// ✔️ Recherche avancée de deals
 app.get('/deals/search', async (req, res) => {
-  const { limit = 12, price, date, filterBy, id } = req.query;
+  const { limit = 12, price, date, filterBy } = req.query;
 
   try {
-    // 🎯 If ID is provided → Direct search by ID
-    if (id) {
-      const deal = await findDealById(id);
-      if (!deal) {
-        return res.status(404).json({ error: 'Deal not found' });
-      }
-
-      return res.json({
-        limit: 1,
-        total: 1,
-        results: [deal]
-      });
-    }
-
-    // 🔄 Otherwise, continue with other filters
     let deals = [];
 
+    // Choix du filtre
     if (filterBy === 'best-discount') {
       deals = await findBestDiscountDeals();
     } else if (filterBy === 'most-commented') {
@@ -60,39 +48,25 @@ app.get('/deals/search', async (req, res) => {
       deals = await findDealsSortedByPrice("asc");
     }
 
-    // 🧠 Dynamic Filtering
-    if (price) {
-      const maxPrice = parseFloat(price);
-      if (isNaN(maxPrice)) {
-        return res.status(400).json({ error: 'Invalid price value' });
-      }
-      deals = deals.filter(d => d.price !== null && d.price <= maxPrice);
-    }
-
+    // Filtres supplémentaires
+    if (price) deals = deals.filter(d => d.price && d.price <= parseFloat(price));
     if (date) {
       const dateLimit = new Date(date);
-      if (isNaN(dateLimit.getTime())) {
-        return res.status(400).json({ error: 'Invalid date value' });
-      }
-      deals = deals.filter(d =>
-        new Date(d.publishedAt || d.published) >= dateLimit
-      );
+      deals = deals.filter(d => new Date(d.publishedAt || d.published) >= dateLimit);
     }
-
-    const limited = deals.slice(0, parseInt(limit));
 
     res.json({
       limit: parseInt(limit),
-      total: limited.length,
-      results: limited
+      total: deals.length,
+      results: deals.slice(0, limit)
     });
   } catch (error) {
-    console.error('❌ Error GET /deals/search:', error);
+    console.error('❌ Error GET /deals/search', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-// ✔️ Search Sales
+// ✔️ Recherche de ventes
 app.get('/sales/search', async (req, res) => {
   const { legoSetId, limit = 12 } = req.query;
 
@@ -105,21 +79,34 @@ app.get('/sales/search', async (req, res) => {
       sales = await findRecentSales();
     }
 
-    // Sort by descending date
+    // Tri par date descendante
     sales = sales.sort((a, b) => new Date(b.published) - new Date(a.published));
 
     res.json({
       limit: parseInt(limit),
       total: sales.length,
-      results: sales.slice(0, parseInt(limit))
+      results: sales.slice(0, limit)
     });
   } catch (error) {
-    console.error('❌ Error GET /sales/search:', error);
+    console.error('❌ Error GET /sales/search', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-// Start the server
+// ✔️ Récupérer un deal par son ID
+app.get('/deals/:id', async (req, res) => {
+    const dealId = req.params.id;
+  
+    try {
+      const deal = await findDealById(dealId);
+      if (!deal) return res.status(404).json({ error: 'Deal not found' });
+      res.json(deal);
+    } catch (error) {
+      console.error('❌ Error GET /deals/:id', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+
 app.listen(PORT, () => {
   console.log(`📡 API server running at http://localhost:${PORT}`);
 });

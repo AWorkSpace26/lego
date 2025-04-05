@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🧱 Lego Deals Explorer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>🧱 Lego Deals Explorer</h1>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="filters">
+      <h2>🎛 Filters</h2>
+      <div class="filter-group">
+        <div>
+          <label for="show-select">Show:</label>
+          <select id="show-select">
+            <option value="6">6</option>
+            <option value="12" selected>12</option>
+            <option value="24">24</option>
+          </select>
+        </div>
+        <div>
+          <label for="sort-select">Sort by:</label>
+          <select id="sort-select">
+            <option value="price-asc">Price ↑</option>
+            <option value="price-desc">Price ↓</option>
+            <option value="date-asc">Date ↑</option>
+            <option value="date-desc">Date ↓</option>
+            <option value="best-discount">Best Discount</option>
+            <option value="most-commented">Most Commented</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section class="deals">
+      <h2>🔥 Deals</h2>
+      <div id="deal-list" class="card-grid">Loading deals...</div>
+    </section>
+
+    <section class="sales">
+      <h2>🧳 Recent Vinted Sales</h2>
+      <div id="sale-list" class="card-grid">Loading sales...</div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Built with ❤️ for Lego fans</p>
+  </footer>
+
+  <script src="interfaceCode.js"></script>
+</body>
+</html>
