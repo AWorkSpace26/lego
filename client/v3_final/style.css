@@ -135,17 +135,38 @@ header {
     margin-top: auto;
   }
   
+  .image-wrapper {
+    position: relative;
+    width: 100%;
+    height: auto;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    border-radius: var(--radius);
+  }
+  
+  .deal-image {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    display: block;
+    border-radius: var(--radius);
+  }
+  
   .favorite-btn {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     cursor: pointer;
     position: absolute;
     top: 10px;
     right: 10px;
-    opacity: 1; 
-    transition: transform 0.2s ease; 
+    z-index: 2;
+    transition: transform 0.2s ease;
+    color: red;
+    text-shadow: 0 0 2px white;
   }
+  
   .favorite-btn:hover {
     transform: scale(1.2);
   }
+  

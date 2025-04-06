@@ -8,19 +8,47 @@ const saleList = document.getElementById('sale-list');
 const vintedSalesSection = document.getElementById('vinted-sales');
 const vintedSalesList = document.getElementById('vinted-sales-list');
 
-const fetchDeals = async () => {
+let currentPage = 1;
+let totalPages = 1
+
+const fetchDeals = async (page = 1) => {
   const limit = showSelect.value;
   const filterBy = sortSelect.value;
 
   try {
-    const res = await fetch(`${API_BASE}/deals/search?limit=${limit}&filterBy=${filterBy}`);
+    const res = await fetch(`${API_BASE}/deals/search?limit=${limit}&filterBy=${filterBy}&page=${page}`);
     const data = await res.json();
+    if (data.results.length === 0 && currentPage > 1) {
+      currentPage = 1;
+      return fetchDeals(currentPage);
+    }
+
     renderDeals(data.results || []);
     populateDealIdSelect(data.results || []);
+    updatePagination(data.pagination || {});
   } catch (error) {
     console.error(error);
     dealList.innerHTML = '<p>Error loading deals.</p>';
   }
+};
+
+const pageSelect = document.getElementById('page-select');
+pageSelect.addEventListener('change', (event) => {
+  const selectedPage = parseInt(event.target.value, 10);
+  fetchDeals(selectedPage);
+});
+
+const updatePagination = (pagination) => {
+  currentPage = pagination.currentPage || 1;
+  totalPages = pagination.totalPages || 1;
+
+  if (currentPage > totalPages) {
+    currentPage = 1; // Réinitialise à la première page si la page actuelle dépasse le total
+  }
+
+  pageSelect.innerHTML = Array.from({ length: totalPages }, (_, i) => `
+    <option value="${i + 1}" ${i + 1 === currentPage ? 'selected' : ''}>Page ${i + 1}</option>
+  `).join('');
 };
 
 const fetchDealByLegoId = async (legoId) => {
@@ -53,9 +81,12 @@ const renderDeals = (deals) => {
 
   dealList.innerHTML = deals.map(d => `
     <div class="deal-card">
-      <button class="favorite-btn" data-id="${d.legoId}">
-        ${d.isFavorite ? '❤️' : '🤍'}
-      </button>
+      <div class="image-wrapper">
+        <img src="${d.image || ''}" alt="LEGO ${d.legoId}" class="deal-image" />
+        <button class="favorite-btn" data-id="${d.legoId}">
+          ${d.isFavorite ? '❤️' : '🤍'}
+        </button>
+      </div>
       <h3>${d.title.replace(/-/g, ' ')}</h3>
       <p><strong>Lego ID:</strong> ${d.legoId}</p>
       <p><strong>Merchant:</strong> ${d.merchantName || 'Unknown'}</p>
@@ -68,7 +99,7 @@ const renderDeals = (deals) => {
     </div>
   `).join('');
 
-  // Ajoutez des événements pour les boutons favoris
+  // Boutons favoris
   document.querySelectorAll('.favorite-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const legoId = e.target.dataset.id;
@@ -76,6 +107,7 @@ const renderDeals = (deals) => {
     });
   });
 };
+
 
 const toggleFavorite = async (legoId) => {
   try {
@@ -115,7 +147,10 @@ const populateDealIdSelect = (deals) => {
 };
 
 // Events
-showSelect.addEventListener('change', fetchDeals);
+showSelect.addEventListener('change', () => {
+  currentPage = 1; // Réinitialise la page actuelle à 1
+  fetchDeals(currentPage); // Recharge les deals pour la première page
+});
 sortSelect.addEventListener('change', async () => {
   const filterBy = sortSelect.value;
 

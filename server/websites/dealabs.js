@@ -5,11 +5,12 @@ const { connectDB } = require('../db'); // MongoDB connection
 const BASE_URL = 'https://www.dealabs.com/groupe/lego?page=';
 const MAX_PAGES = 5; // Number of pages to scrape
 
-/**
- * Parse webpage data response
- * @param {String} data - HTML response
- * @return {Array} deals
- */
+
+const extractLegoId = (text) => {
+  const match = text.match(/\b\d{5}\b/);
+  return match ? match[0] : null;
+};
+
 const parse = (data) => {
   const $ = cheerio.load(data);
   const deals = [];
@@ -23,19 +24,38 @@ const parse = (data) => {
         if (deal.props && deal.props.thread) {
           const thread = deal.props.thread;
 
-          // Ignore expired deals
           if (!thread.isExpired) {
             const price = thread.price || null;
             const nextBestPrice = thread.nextBestPrice || null;
 
-            // Calculate discount if both price and nextBestPrice are available
+            // 🔍 1. Tenter d'extraire l'ID LEGO du titre
+            let legoId = extractLegoId(thread.title);
+
+            // 🔍 2. Sinon, tenter depuis la description HTML
+            if (!legoId && thread.descriptionHtml) {
+              const descText = cheerio.load(thread.descriptionHtml).text();
+              legoId = extractLegoId(descText);
+            }
+
+            // ❌ 3. Si aucun ID trouvé, on skip le deal
+            if (!legoId) return;
+
+            // 🖼 4. Image (depuis JSON ou fallback DOM)
+            let imageUrl = thread.imageUrl || null;
+            if (!imageUrl) {
+              const imgTag = $(element).find('img.thread-image');
+              imageUrl = imgTag.attr('src') || null;
+            }
+
+            // 💸 5. Calcul de la réduction
             let discount = null;
             if (price && nextBestPrice) {
               discount = Math.round(((nextBestPrice - price) / nextBestPrice) * 100);
             }
 
+            // ✅ 6. Ajouter le deal à la liste
             deals.push({
-              legoId: thread.threadId,
+              legoId: legoId,
               title: thread.titleSlug,
               commentCount: thread.commentCount || 0,
               temperature: thread.temperature || 0,
@@ -44,8 +64,9 @@ const parse = (data) => {
               merchantName: thread.merchant ? thread.merchant.merchantName : null,
               price: price,
               nextBestPrice: nextBestPrice,
-              discount: discount, // Calculé précédemment
-              isFavorite: false // Ajout du champ favoris par défaut
+              discount: discount,
+              image: imageUrl,
+              isFavorite: false
             });
           }
         }
@@ -57,6 +78,7 @@ const parse = (data) => {
 
   return deals;
 };
+
 
 /**
  * Scrape a single page

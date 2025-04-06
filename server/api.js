@@ -4,14 +4,14 @@ const helmet = require('helmet');
 const bodyParser = require('body-parser');
 
 const {
-  connectDB, // Importation de connectDB
   findBestDiscountDeals,
   findMostCommentedDeals,
   findDealsSortedByPrice,
   findDealsSortedByDate,
   findSalesForLegoSetId,
   findRecentSales,
-  findDealByLegoId
+  findDealByLegoId,
+  connectDB
 } = require('./db'); // Toutes les fonctions de db.js
 
 const PORT = 8092;
@@ -29,46 +29,60 @@ app.get('/', (req, res) => {
   res.send({ ack: true });
 });
 
-// ✔️ Recherche de deals
-app.get('/deals/search', async (req, res) => {
-  const { limit = 12, price, date, filterBy, isFavorite } = req.query;
 
+
+app.get('/deals/search', async (req, res) => {
+  const { limit = 12, filterBy, page = 1, price, date } = req.query; // Ajout de `price` et `date`
   try {
     let deals = [];
 
     // Choix du filtre
     if (filterBy === 'best-discount') {
       deals = await findBestDiscountDeals();
-      deals = deals.sort((a, b) => {
-        if (a.discount === null) return 1;
-        if (b.discount === null) return -1;
-        return b.discount - a.discount;
-      });
     } else if (filterBy === 'most-commented') {
       deals = await findMostCommentedDeals();
-      deals = deals.sort((a, b) => (b.commentCount || 0) - (a.commentCount || 0));
-    } else if (date) {
-      deals = await findDealsSortedByDate("desc");
-    } else {
-      deals = await findDealsSortedByPrice("asc");
-    }
+    } else if (filterBy === 'price-asc' || filterBy === 'price-desc') {
+      deals = await findDealsSortedByPrice();
 
-    // Filtrer uniquement les favoris si demandé
-    if (isFavorite === 'true') {
-      deals = deals.filter(d => d.isFavorite === true);
+      // Tri par prix
+      deals = deals.sort((a, b) => {
+        if (a.price == null) return 1; // Place les `null` ou `N/A` en dernier
+        if (b.price == null) return -1;
+        return filterBy === 'price-asc' ? a.price - b.price : b.price - a.price;
+      });
+    } else if (filterBy === 'date-asc' || filterBy === 'date-desc') {
+      deals = await findDealsSortedByDate();
+
+      // Tri par date
+      deals = deals.sort((a, b) => {
+        const dateA = new Date(a.publishedAt || a.published);
+        const dateB = new Date(b.publishedAt || b.published);
+
+        if (!a.publishedAt) return 1; // Place les `null` ou `N/A` en dernier
+        if (!b.publishedAt) return -1;
+        return filterBy === 'date-asc' ? dateA - dateB : dateB - dateA;
+      });
     }
 
     // Filtres supplémentaires
-    if (price) deals = deals.filter(d => d.price && d.price <= parseFloat(price));
+    if (price) deals = deals.filter(d => d.price && d.price <= parseFloat(price)); // Vérification de `price`
     if (date) {
       const dateLimit = new Date(date);
       deals = deals.filter(d => new Date(d.publishedAt || d.published) >= dateLimit);
     }
 
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + parseInt(limit);
+
+    const paginatedDeals = deals.slice(startIndex, endIndex);
+
     res.json({
-      limit: parseInt(limit),
-      total: deals.length,
-      results: deals.slice(0, limit)
+      pagination: {
+        currentPage: deals.length > 0 ? parseInt(page) : 1,
+        totalPages: Math.max(1, Math.ceil(deals.length / limit)),
+        totalResults: deals.length,
+      },
+      results: paginatedDeals,
     });
   } catch (error) {
     console.error('❌ Error GET /deals/search', error);
@@ -76,7 +90,6 @@ app.get('/deals/search', async (req, res) => {
   }
 });
 
-// ✔️ Recherche de ventes
 app.get('/sales/search', async (req, res) => {
   const { legoSetId, limit = 12 } = req.query;
 
@@ -89,6 +102,7 @@ app.get('/sales/search', async (req, res) => {
       sales = await findRecentSales();
     }
 
+    // Tri par date descendante
     sales = sales.sort((a, b) => new Date(b.published) - new Date(a.published));
 
     res.json({
@@ -102,12 +116,12 @@ app.get('/sales/search', async (req, res) => {
   }
 });
 
-// ✔️ Récupérer un deal par Lego ID
+
 app.get('/deals/lego/:legoId', async (req, res) => {
   const legoId = req.params.legoId;
 
   try {
-    const deal = await findDealByLegoId(legoId);
+    const deal = await findDealByLegoId(legoId); // Fonction dans db.js
     if (!deal) {
       console.error(`❌ Deal not found for Lego ID: ${legoId}`);
       return res.status(404).json({ error: 'Deal not found' });
@@ -119,7 +133,6 @@ app.get('/deals/lego/:legoId', async (req, res) => {
   }
 });
 
-// ✔️ Basculer le statut des favoris
 app.patch('/deals/:id/favorite', async (req, res) => {
   const { id } = req.params;
 
