@@ -8,7 +8,6 @@ const {
   findMostCommentedDeals,
   findDealsSortedByPrice,
   findDealsSortedByDate,
-  findSalesForLegoSetId,
   findDealByLegoId,
   connectDB
 } = require('./db'); // Toutes les fonctions de db.js
@@ -31,46 +30,47 @@ app.get('/', (req, res) => {
 
 
 app.get('/deals/search', async (req, res) => {
-  const { limit = 12, filterBy, price, date } = req.query;
+  const { limit = 12, filterBy, price, date, page = 1, isFavorite } = req.query;
 
   try {
     let deals = [];
 
-    // Choix du filtre
-    if (filterBy === 'best-discount') {
+    // ✅ Nouveau : filtre par favoris uniquement
+    if (isFavorite === 'true') {
+      const db = await connectDB();
+      const collection = db.collection('dealabs');
+      deals = await collection.find({ isFavorite: true }).toArray();
+    } else if (filterBy === 'best-discount') {
       deals = await findBestDiscountDeals();
     } else if (filterBy === 'most-commented') {
       deals = await findMostCommentedDeals();
     } else if (filterBy === 'price-asc' || filterBy === 'price-desc') {
       deals = await findDealsSortedByPrice();
 
-      // Tri par prix
       deals = deals.sort((a, b) => {
-        if (a.price == null) return 1; // Place les `null` ou `N/A` en dernier
+        if (a.price == null) return 1;
         if (b.price == null) return -1;
         return filterBy === 'price-asc' ? a.price - b.price : b.price - a.price;
       });
     } else if (filterBy === 'date-asc' || filterBy === 'date-desc') {
       deals = await findDealsSortedByDate();
 
-      // Tri par date
       deals = deals.sort((a, b) => {
         const dateA = new Date(a.publishedAt || a.published);
         const dateB = new Date(b.publishedAt || b.published);
-
-        if (!a.publishedAt) return 1; // Place les `null` ou `N/A` en dernier
+        if (!a.publishedAt) return 1;
         if (!b.publishedAt) return -1;
         return filterBy === 'date-asc' ? dateA - dateB : dateB - dateA;
       });
     }
 
-    // Filtres supplémentaires
     if (price) deals = deals.filter(d => d.price && d.price <= parseFloat(price));
     if (date) {
       const dateLimit = new Date(date);
       deals = deals.filter(d => new Date(d.publishedAt || d.published) >= dateLimit);
     }
- const startIndex = (page - 1) * limit;
+
+    const startIndex = (page - 1) * limit;
     const endIndex = startIndex + parseInt(limit);
 
     const paginatedDeals = deals.slice(startIndex, endIndex);
@@ -88,6 +88,7 @@ app.get('/deals/search', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
 
 const { findSalesForLegoSetId, getVintedStatsForLegoId } = require('./db');
 
@@ -147,7 +148,7 @@ app.patch('/deals/:id/favorite', async (req, res) => {
       return res.status(404).json({ error: 'Deal not found' });
     }
 
-    const updatedDeal = await collection.updateOne(
+    const updated = await collection.updateOne(
       { legoId: id },
       { $set: { isFavorite: !deal.isFavorite } }
     );
@@ -158,6 +159,7 @@ app.patch('/deals/:id/favorite', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(`📡 API server running at http://localhost:${PORT}`);

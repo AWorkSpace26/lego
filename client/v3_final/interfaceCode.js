@@ -9,7 +9,7 @@ const vintedSalesSection = document.getElementById('vinted-sales');
 const vintedSalesList = document.getElementById('vinted-sales-list');
 
 let currentPage = 1;
-let totalPages = 1
+let totalPages = 1;
 
 const fetchDeals = async (page = 1) => {
   const limit = showSelect.value;
@@ -57,7 +57,6 @@ const fetchVintedIndicators = async (legoId) => {
       'P5 sales price value': `${stats.p5.toFixed(2)} €`,
       'P25 sales price value': `${stats.p25.toFixed(2)} €`,
       'P50 sales price value': `${stats.p50.toFixed(2)} €`,
-      'Lifetime value': `${stats.lifetime} days`
     };
 
     const ul = document.getElementById('indicator-list');
@@ -75,9 +74,6 @@ const fetchVintedIndicators = async (legoId) => {
   }
 };
 
-
-
-
 const pageSelect = document.getElementById('page-select');
 pageSelect.addEventListener('change', (event) => {
   const selectedPage = parseInt(event.target.value, 10);
@@ -89,7 +85,7 @@ const updatePagination = (pagination) => {
   totalPages = pagination.totalPages || 1;
 
   if (currentPage > totalPages) {
-    currentPage = 1; // Réinitialise à la première page si la page actuelle dépasse le total
+    currentPage = 1;
   }
 
   pageSelect.innerHTML = Array.from({ length: totalPages }, (_, i) => `
@@ -101,7 +97,7 @@ const fetchDealByLegoId = async (legoId) => {
   try {
     const res = await fetch(`${API_BASE}/deals/lego/${legoId}`);
     const deal = await res.json();
-    renderDeals([deal]); // Affiche uniquement le deal correspondant
+    renderDeals([deal]);
   } catch (error) {
     console.error(error);
     dealList.innerHTML = '<p>Error loading deal by Lego ID.</p>';
@@ -126,7 +122,6 @@ const renderVintedSales = (sales) => {
   `).join('');
 };
 
-
 const renderDeals = (deals) => {
   if (deals.length === 0) {
     dealList.innerHTML = '<p>No deals found.</p>';
@@ -135,12 +130,9 @@ const renderDeals = (deals) => {
 
   dealList.innerHTML = deals.map(d => `
     <div class="deal-card">
-      <div class="image-wrapper">
-        <img src="${d.image || ''}" alt="LEGO ${d.legoId}" class="deal-image" />
-        <button class="favorite-btn" data-id="${d.legoId}">
-          ${d.isFavorite ? '❤️' : '🤍'}
-        </button>
-      </div>
+      <button class="favorite-btn" data-id="${d.legoId}">
+        ${d.isFavorite ? '❤️' : '🤍'}
+      </button>
       <h3>${d.title.replace(/-/g, ' ')}</h3>
       <p><strong>Lego ID:</strong> ${d.legoId}</p>
       <p><strong>Merchant:</strong> ${d.merchantName || 'Unknown'}</p>
@@ -153,30 +145,33 @@ const renderDeals = (deals) => {
     </div>
   `).join('');
 
- 
   document.querySelectorAll('.favorite-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const legoId = e.target.dataset.id;
-      await toggleFavorite(legoId);
+      const updated = await toggleFavorite(legoId);
+
+      if (updated !== null) {
+        // Met à jour uniquement ce bouton sans recharger la page
+        btn.textContent = updated ? '❤️' : '🤍';
+      }
     });
   });
 };
-
 
 const toggleFavorite = async (legoId) => {
   try {
     const res = await fetch(`${API_BASE}/deals/${legoId}/favorite`, { method: 'PATCH' });
     const data = await res.json();
-
     if (data.success) {
-      fetchDeals(); // Recharge les deals pour refléter les changements
+      return data.isFavorite; // retourne le nouvel état
+    } else {
+      return null;
     }
   } catch (error) {
     console.error('❌ Error toggling favorite:', error);
+    return null;
   }
 };
-
-
 
 const populateDealIdSelect = (deals) => {
   dealIdSelect.innerHTML = `
@@ -187,8 +182,13 @@ const populateDealIdSelect = (deals) => {
 
 // Events
 showSelect.addEventListener('change', () => {
-  currentPage = 1; // Réinitialise la page actuelle à 1
-  fetchDeals(currentPage); // Recharge les deals pour la première page
+  currentPage = 1;
+
+  if (sortSelect.value === 'favorites') {
+    sortSelect.value = 'price-asc'; 
+  }
+
+  fetchDeals(currentPage);
 });
 sortSelect.addEventListener('change', async () => {
   const filterBy = sortSelect.value;

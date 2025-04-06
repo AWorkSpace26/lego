@@ -42,7 +42,13 @@ const parse = (data) => {
               discount = Math.round(((nextBestPrice - price) / nextBestPrice) * 100);
             }
 
-            // 3. Ajouter à la liste (sans image)
+            // 3. Construction du lien d'image si dispo
+            let image = null;
+            if (thread.mainImage && thread.mainImage.uid) {
+              image = `https://static-pepper.dealabs.com/threads/raw/${thread.mainImage.uid}`;
+            }
+
+            // 4. Ajouter à la liste
             deals.push({
               legoId: legoId,
               title: thread.titleSlug,
@@ -54,7 +60,8 @@ const parse = (data) => {
               price: price,
               nextBestPrice: nextBestPrice,
               discount: discount,
-              isFavorite: false
+              isFavorite: false,
+              image: image
             });
           }
         }
@@ -66,6 +73,7 @@ const parse = (data) => {
 
   return deals;
 };
+
 
 const scrapePage = async (page) => {
   const url = `${BASE_URL}${page}&hide_expired=true`;
@@ -102,7 +110,7 @@ const scrapeFirstPages = async () => {
   const db = await connectDB();
   const collection = db.collection('dealabs');
 
-  await collection.deleteMany({});
+  //await collection.deleteMany({});
   console.log('🗑 Old data removed!');
 
   let allDeals = [];
