@@ -9,7 +9,6 @@ const {
   findDealsSortedByPrice,
   findDealsSortedByDate,
   findSalesForLegoSetId,
-  findRecentSales,
   findDealByLegoId,
   connectDB
 } = require('./db'); // Toutes les fonctions de db.js
@@ -24,7 +23,7 @@ app.use(helmet());
 app.use(bodyParser.json());
 app.options('*', cors());
 
-// ✔️ Test de base
+
 app.get('/', (req, res) => {
   res.send({ ack: true });
 });
@@ -32,7 +31,8 @@ app.get('/', (req, res) => {
 
 
 app.get('/deals/search', async (req, res) => {
-  const { limit = 12, filterBy, page = 1, price, date } = req.query; // Ajout de `price` et `date`
+  const { limit = 12, filterBy, price, date } = req.query;
+
   try {
     let deals = [];
 
@@ -65,21 +65,20 @@ app.get('/deals/search', async (req, res) => {
     }
 
     // Filtres supplémentaires
-    if (price) deals = deals.filter(d => d.price && d.price <= parseFloat(price)); // Vérification de `price`
+    if (price) deals = deals.filter(d => d.price && d.price <= parseFloat(price));
     if (date) {
       const dateLimit = new Date(date);
       deals = deals.filter(d => new Date(d.publishedAt || d.published) >= dateLimit);
     }
-
-    const startIndex = (page - 1) * limit;
+ const startIndex = (page - 1) * limit;
     const endIndex = startIndex + parseInt(limit);
 
     const paginatedDeals = deals.slice(startIndex, endIndex);
 
     res.json({
       pagination: {
-        currentPage: deals.length > 0 ? parseInt(page) : 1,
-        totalPages: Math.max(1, Math.ceil(deals.length / limit)),
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(deals.length / limit),
         totalResults: deals.length,
       },
       results: paginatedDeals,
@@ -90,31 +89,34 @@ app.get('/deals/search', async (req, res) => {
   }
 });
 
+const { findSalesForLegoSetId, getVintedStatsForLegoId } = require('./db');
+
 app.get('/sales/search', async (req, res) => {
-  const { legoSetId, limit = 12 } = req.query;
+  const { id } = req.query;
+  if (!id) return res.status(400).json({ error: 'Missing LEGO ID' });
 
   try {
-    let sales = [];
-
-    if (legoSetId) {
-      sales = await findSalesForLegoSetId(legoSetId);
-    } else {
-      sales = await findRecentSales();
-    }
-
-    // Tri par date descendante
-    sales = sales.sort((a, b) => new Date(b.published) - new Date(a.published));
-
-    res.json({
-      limit: parseInt(limit),
-      total: sales.length,
-      results: sales.slice(0, limit)
-    });
-  } catch (error) {
-    console.error('❌ Error GET /sales/search', error);
+    const sales = await findSalesForLegoSetId(id);
+    res.json({ results: sales });
+  } catch (e) {
+    console.error('❌ Error fetching sales:', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+app.get('/sales/stats', async (req, res) => {
+  const { id } = req.query;
+  if (!id) return res.status(400).json({ error: 'Missing LEGO ID' });
+
+  try {
+    const stats = await getVintedStatsForLegoId(id);
+    res.json(stats);
+  } catch (e) {
+    console.error('❌ Error fetching stats:', e);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 
 
 app.get('/deals/lego/:legoId', async (req, res) => {

@@ -1,92 +1,100 @@
+const fs = require('fs');
 const fetch = require('node-fetch');
-const fs = require('fs').promises;
+const { connectDB } = require('../db'); 
 
-/**
- * Parse the Vinted API response
- * @param {Object} data - JSON response from the Vinted API
- * @return {Array} extracted deals
- */
-const parse = (data) => {
-  const items = data.items || [];
-  return items.map(item => ({
-    id: item.id,
-    title: item.title,
-    price: item.price,
-    discount: item.discount || 0,
-    url: `https://www.vinted.fr/items/${item.id}`,
-    photo: item.photos?.[0]?.url || null,
-    total_item_price: item.total_item_price,
-    status: item.status,
-    user: {
-      id: item.user?.id,
-      login: item.user?.login,
-      profile_url: item.user?.profile_url,
-      photo: item.user?.photo?.url || null
-    }
-  }));
+const LEGO_IDS_FILE = './data.json';
+const OUTPUT_FILE = './vinted_results.json';
+const BASE_URL = 'https://www.vinted.fr/api/v2/catalog/items?page=1&per_page=96&search_text=';
+
+
+
+const HEADERS = {
+  'accept': 'application/json, text/plain, */*',
+  'accept-language': 'fr',
+  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0',
+  'x-anon-id': 'eb482041-876a-4c84-a88c-4d7f1a49c172',
+  'x-csrf-token': '75f6c9fa-dc8e-4e52-a000-e09dd4084b3e',
+  'x-money-object': 'true',
+  'cookie': 'v_udt=ZjVUWk5YWjZCcnlyMGczRm1rRllOZ3pNM0U4Ti0tV0h4a29VZVliRFpNM2FuUC0tWlo2ZUJ6Uzd4UTB2Z2QrUWtNdzkrZz09; anon_id=eb482041-876a-4c84-a88c-4d7f1a49c172; access_token_web=eyJraWQiOiJFNTdZZHJ1SHBsQWp1MmNObzFEb3JIM2oyN0J1NS1zX09QNVB3UGlobjVNIiwiYWxnIjoiUFMyNTYifQ.eyJhcHBfaWQiOjQsImNsaWVudF9pZCI6IndlYiIsImF1ZCI6ImZyLmNvcmUuYXBpIiwiaXNzIjoidmludGVkLWlhbS1zZXJ2aWNlIiwiaWF0IjoxNzQzOTY0MzI4LCJzaWQiOiIwZDkzY2Y3ZC0xNzQzOTY0MzI4Iiwic2NvcGUiOiJwdWJsaWMiLCJleHAiOjE3NDM5NzE1MjgsInB1cnBvc2UiOiJhY2Nlc3MifQ.FJUUV0d6zojMzR8VSgOq2o2oTlSD4Ii5Srs1B1xiY1b3r1T1JPYO2tiNV3pazl8nFGqyWEIqPB9s7y0CdT5LC24LO9lZTWu9vQfbt1JCB8Wm-u2YhFKMq04wmnXnjatpNIUra56XlfVIYGs1Xe-NeA5vHovCJvB3U38JteTpdl7ttAtNZ60qnTjy5vm16UrXa7kvcbJbpeE5iG5kRYxlWvbkr-JbOaSq0sUE6l492tZpI5UgUF9IN2eq7dPZSOuyaVb8D3QtmETvotW-M8gKMt5tBbb-EdFdWx5kTx1igE6-pFYBU_KUhs10ztCuZoZ_mWm-EpO3B833bp4jB5O5Gg; refresh_token_web=eyJraWQiOiJFNTdZZHJ1SHBsQWp1MmNObzFEb3JIM2oyN0J1NS1zX09QNVB3UGlobjVNIiwiYWxnIjoiUFMyNTYifQ.eyJhcHBfaWQiOjQsImNsaWVudF9pZCI6IndlYiIsImF1ZCI6ImZyLmNvcmUuYXBpIiwiaXNzIjoidmludGVkLWlhbS1zZXJ2aWNlIiwiaWF0IjoxNzQzOTY0MzI4LCJzaWQiOiIwZDkzY2Y3ZC0xNzQzOTY0MzI4Iiwic2NvcGUiOiJwdWJsaWMiLCJleHAiOjE3NDQ1NjkxMjgsInB1cnBvc2UiOiJyZWZyZXNoIn0.QUE2qA9undaykukOGb16dNRQiy-lDLIGv6H_OZJTNbR8QrbxcOrbcM3EoNsT2Ys9Wll6PYCkuRv4f4rwr-6-mnapJ3ZjaefY9xnvrVaPIUeOjr_CqnyYgA7w73MtsmQ6r-v5nNtVd28mp0d0Wc4A9cyKADv2qMuxb7erjf7CPltNf3UZ5R4HGjq2E6vcLxgPHjaFK5iKzt2yOrF9Ywc3YFzbX4lWdkRAQECDuV4FqxqnP-xfymXEC3Qg8l8q6C2DC4kNo4etgGUVJvJsehk3GvIs2KL5wseRqvRpZDajJdYDGZVVCEegjgiDaFjNcajc4vVx5dCBvkhhSAcK5izgkA; anon_id=eb482041-876a-4c84-a88c-4d7f1a49c172; v_sid=d93ba76cd42317d83fadece6f5c33c7a; OptanonAlertBoxClosed=2025-04-06T18:32:10.741Z; eupubconsent-v2=CQPcI7AQPcI7AAcABBENBkFgAAAAAAAAAChQAAAAAAFhIIAACAAFwAUABUADgAHgAQQAyADUAHgATAAqgBvAD0AH4AQkAhgCJAEcAJYATQArQBhwDKAMsAbIA74B7AHxAPsA_QCAAEUgIuAjEBGgEcAKCAVAAq4BcwDFAGiANoAbgA4gCHQEiAJ2AUOAo8BSICmwFsALkAXeAvMBhoDJAGTgMuAZzA1gDWQGxgNvAbqA5MBy4DxwHtAQhAheEAOAAOABIAOcAg4BPwEegJFASsAm0BT4CwgF5AMQAYtAyEDIwGjANTAbQA24BugD5AH7gQEAgZBBEEEwIMAQrAhcOAXAAIgAcAB4AFwASAA_ADQAOcAdwBAICDgIQAT8AqABegDpAIQAR6AkUBKwCYgEygJtAUgApMBXYC1AGIAMWAZCAyYBowDTQGpgNeAbQA2wBtwDj4HOgc-A-IB9sD9gP3AgeBBECDAEGwIVjoJYAC4AKAAqABwAEAALoAZABqADwAJgAVYAuAC6AGIAN4AegA_QCGAIkARwAlgBNACjAFaAMMAZQA0QBsgDvAHtAPsA_YCKAIwARwAoIBVwCxAFzALyAYoA2gBuADiAHUAQ6Ai8BIgCZAE7AKHAUfApoCmwFWALFAWwAuABcgC7QF3gLzAX0Aw0BjwDJAGTgMqgZYBlwDOQGqgNYAbeA3UBxYDkwHLgPHAe0A-sCAIELSABIABAAaABzgFiAR6Am0BSYC8gGpgNsAbcA58B8QD9gIHgQYAg2BCshAcAAWABQAFwAVQAuABiADeAHoAd4BFACOAEpAKCAVcAuYBigDaAHUgU0BTYCxQFogLgAXIAycBnIDVQHjgQtJQIwAEAALAAoABwAHgATAAqgBcADFAIYAiQBHACjAFaANkAd4A_ACOAFXAMUAdQBDoCLwEiAKPAU2AsUBbAC8wGTgMsAZyA1gBt4D2gIHkgBwAFwB3AEAAKgAj0BIoCVgE2gKTAYsA3IB-4EEQIMFIGwAC4AKAAqABwAEEAMgA0AB4AEwAKoAYgA_QCGAIkAUYArQBlADRAGyAO-AfYB-gEWAIwARwAoIBVwC5gF5AMUAbQA3ACHQEXgJEATsAocBTYCxQFsALgAXIAu0BeYC-gGGgMkAZPAywDLgGcwNYA1kBt4DdQHJgPHAe0BCECFpQA-ABcAEgAjgBzgDuAIAASIAsQBrwDtgH_AR6AkUBMQCbQFIAKfAV2AvIBiwDJgGpgNeAfFA_YD9wIGAQPAgmBBgCDYEKy0AEBTYAA.YAAAAAAAAAAA; OTAdditionalConsentString=1~; domain_selected=true; __cf_bm=3y2biDRk.ZadIvLEEE0PU_zIpk9.F6vK8Xq72YxTQLc-1743968181-1.0.1.1-X_FTDKWZMmhgG_iGEuMYd6nqSawq0mwRU5t5uL9OGAmkSACbRzwKcQVigGLeOsl3bo4fd0OHLDyblxGcx6AsKJGElXTMwU0rip2EaidmViav2qaf23BCnhIvCtKAWy87; cf_clearance=No64rNMABpA1ZhJhPpHzHr7dVZnNo8A5ivAEPx9dhVQ-1743968181-1.2.1.1-I1FdCNZkUqzkxDzse7SfBvsJOo1eh4WhMLCALRPeNy7XcuvsReG9MdU4PaUIO32YIRISmQU7enYFLiyXe7grW8zmgAOeGW5UCPQ8mRoI22DZ8g0gpZoa.1XzLdHIGfkD5YvQK.d1P6cK104qWpwEVqsS.GpZe68uvF1tWukktucRpHl8ChaEGyzkoj6OXXuiJjsWdJGdAK6XzAAQxCNqHC7bIirJoB4T7fWBjdGZZliHXyP6Z7Mco64KF9bYKrCXsPYt_y9VBVZ3NwcI8x99rbwM.nS8Lr06yqP8GI26zOxz_2ncwkoAkQKuTaNq0qLmVqzqqTRB6x7fSbZ00Q8Ywd0bcsbmU905lH9ReuXAn0o; viewport_size=356; OptanonConsent=isGpcEnabled=0&datestamp=Sun+Apr+06+2025+21%3A37%3A33+GMT%2B0200+(heure+d%E2%80%99%C3%A9t%C3%A9+d%E2%80%99Europe+centrale)&version=202312.1.0&browserGpcFlag=0&isIABGlobal=false&consentId=eb482041-876a-4c84-a88c-4d7f1a49c172&interactionCount=12&hosts=&landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A0%2CC0003%3A0%2CC0004%3A0%2CC0005%3A0%2CV2STACK42%3A0%2CC0015%3A0%2CC0035%3A0&genVendors=V2%3A0%2CV1%3A0%2C&geolocation=FR%3BIDF&AwaitingReconsent=false; datadome=5aVd2PoJuR~ADwDhH9vfPfdQTGA6bQPB2~QFM9~wHkjCa1uqXuqKxFfWGV1qmO3mFs2IIQec2G0AUwX~zy4pQ~Fa1kc30czxX2s3_7_CpDTlppBMi0FQ140DU~xV8iGa; _vinted_fr_session=OWF6N1M4UmQrODE0WDRyK0xoMjZ0YjQ4WnpYU05DZklnTnMvNjVxQXU2bDB5RTExYUxtMlZ6OE5LQmdWdWF2VEIxSjJWRnlrcC9OWG5zZ3ZHbG1qRWhWbEhXSmliVTYyS0NVRjBzQVd4NzlaZ0V3YW9aVjMzREx3eTYwT3RJbGVOWW4yVlRkNnN4K0Y0cUdRTGNuMkdhUXVtOXJXSE5kTGtGVlIzbzliUmMvSkVnempkbEl4NWFWc2N5Yk0yenhJVE9vTDhWUzdEU0dLUUlzbC9Oc1QwMzF3bzIyeVg5dVNWeGltTnVZVFdFRG16Uy9wbVZzRlhqdUpZVzVlWllwbS0tWjBxUzg1Q1RnNnBTS0hWbGppbksyQT09--67e3ee09c9ca1858b29505be662c59d7368cb887; banners_ui_state=PENDING', // <-- copie ici exactement ce que tu as récupéré
+  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0',
+  'referer': 'https://www.vinted.fr/catalog?search_text=42151'
 };
 
-const productCode1 = '42151';  // Exemple de code produit LEGO
-const userAgent1 = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 Edg/132.0.0.0';  
-const cookie1 = "v_udt=b2E1Y0hEUlFDNjJEcGNWSThCNnNSaSsxRzN5OC0tNjAyc20zenlnSi91NTdTaC0tWEtFMzZNZzJBODBpZWRHZnkwai9GZz09; anonymous-locale=fr; anon_id=1acdd525-965e-458d-bf55-a7c90d80aa83; OptanonAlertBoxClosed=2025-01-27T12:04:57.501Z; eupubconsent-v2=CQL43BgQL43BgAcABBENBaFgAAAAAAAAAChQAAAAAAFBIIQACAAFwAUABUADgAHgAQQAyADUAHgARAAmABVADeAHoAPwAhIBDAESAI4ASwAmgBWgDDgGUAZYA2QB3wD2APiAfYB-gEAAIpARcBGACNAFBAKgAVcAuYBigDRAG0ANwAcQBDoCRAE7AKHAUeApEBTYC2AFyALvAXmAw0BkgDJwGXAM5gawBrIDYwG3gN1AcEA5MBy4DxwHtAQhAheEAOgAOABIAOcAg4BPwEegJFASsAm0BT4CwgF5AMQAYtAyEDIwGjANTAbQA24BugDygHyAP3AgIBAyCCIIJgQYAhWBC4cAwAARAA4ADwALgAkAB-AGgAc4A7gCAQEHAQgAn4BUAC9AHSAQgAj0BIoCVgExAJlATaApABSYCuwFqALoAYgAxYBkIDJgGjANNAamA14BtADbAG3AOPgc6Bz4DygHxAPtgfsB-4EDwIIgQYAg2BCsdBLAAXABQAFQAOAAgABdADIANQAeABEACYAFWALgAugBiADeAHoAP0AhgCJAEsAJoAUYArQBhgDKAGiANkAd4A9oB9gH6AP-AigCMAFBAKuAWIAuYBeQDFAG0ANwAcQA6gCHQEXgJEATIAnYBQ4Cj4FNAU2AqwBYoC2AFwALkAXaAu8BeYC-gGGgMeAZIAycBlUDLAMuAZyA1UBrADbwG6gOLAcmA5cB44D2gH1gQBAhaQAJgAIADQAOcAsQCPQE2gKTAXkA1MBtgDbgHPgPKAfEA_YCB4EGAINgQrIQHQAFgAUABcAFUALgAYgA3gB6AEcAO8Af4BFACUgFBAKuAXMAxQBtADqQKaApsBYoC0QFwALkAZOAzkBqoDxwIWkoEQACAAFgAUAA4ADwAIgATAAqgBcADFAIYAiQBHACjAFaANkAd4A_ACrgGKAOoAh0BF4CRAFHgLFAWwAvMBk4DLAGcgNYAbeA9oCB5IAeABcAdwBAACoAI9ASKAlYBNoCkwGLANyAeUA_cCCIEGCkDgABcAFAAVAA4ACCAGQAaAA8ACIAEwAKQAVQAxAB-gEMARIAowBWgDKAGiANkAd8A-wD9AIsARgAoIBVwC5gF5AMUAbQA3ACHQEXgJEATsAocBTYCxQFsALgAXIAu0BeYC-gGGgMkAZPAywDLgGcwNYA1kBt4DdQHBAOTAeOA9oCEIELSgCEAC4AJABHADnAHcAQAAkQBYgDXgHbAP-Aj0BIoCYgE2gKQAU-ArsBdAC8gGLAMmAamA14B5QD4oH7AfuBAwCB4EEwIMAQbAhW.YAAAAAAAAAAA; OTAdditionalConsentString=1~; access_token_web=eyJraWQiOiJFNTdZZHJ1SHBsQWp1MmNObzFEb3JIM2oyN0J1NS1zX09QNVB3UGlobjVNIiwiYWxnIjoiUFMyNTYifQ.eyJhcHBfaWQiOjQsImNsaWVudF9pZCI6IndlYiIsImF1ZCI6ImZyLmNvcmUuYXBpIiwiaWF0IjoxNzM5MjAxNDAxLCJzaWQiOiIzZTU4ZTVhYS0xNzM5MjAxNDAxIiwic2NvcGUiOiJwdWJsaWMiLCJleHAiOjE3MzkyMDg2MDEsInB1cnBvc2UiOiJhY2Nlc3MifQ.WhsE5O4cfP9oLjaODLR0GMHW06lqEqezJawnWzEsWAGerGJ_RNEu9sweh_lt_LtS7yHK_8vPOWn2MAbBUmL4nqh3Mc0OtbeFC0eOdczNAiTmR_bn2EriK6cEs5-2V_2XnXUFObDljmtekEEZi6V4wr69nPN_0kinVK57lR-5nxtJgTKlWn8MFUhid_wAkPZ84OHnDZWvjvaFmuTmZMng1qvSL22Cnr18_aYcuQ_LQXOH64CpcAZzGeO8OFEZ_YWAxXm-QxCfnXdnmuibm0AC4KG4XeriIyf3gj4L6kc9P14SExe3NJkfUcdLx0VuAZE7g92kyy8ECRMiAHjfYl4VAg; refresh_token_web=eyJraWQiOiJFNTdZZHJ1SHBsQWp1MmNObzFEb3JIM2oyN0J1NS1zX09QNVB3UGlobjVNIiwiYWxnIjoiUFMyNTYifQ.eyJhcHBfaWQiOjQsImNsaWVudF9pZCI6IndlYiIsImF1ZCI6ImZyLmNvcmUuYXBpIiwiaWF0IjoxNzM5MjAxNDAxLCJzaWQiOiIzZTU4ZTVhYS0xNzM5MjAxNDAxIiwic2NvcGUiOiJwdWJsaWMiLCJleHAiOjE3Mzk4MDYyMDEsInB1cnBvc2UiOiJyZWZyZXNoIn0.fYQKnsSeMyy_u18jiHtVfDtB8FrwpyiXY-rjeI3vs8q4-zyHLYMsp7myuqrN-k_mRzx41id4VHahDLwUs58mQKAqv4iZKSrC8DV2lXqdiU0WH4sMlmGa-MpRO676hbnsoqElRqbpRtjeZRXkKksuQGR3ohWHTMFe0FP0R3RmR8lqTNbZDfNI6h_RE40OzadE_O6gpxEdO41R6Fzq0YLxTEBylzE_r3uECFKoePYiB0qR9WvNmYZY033o2iiRPoZrnTjhNiERa8MDj_k7PdqBF2tn5jtzBqcOAcvwtfuVTG-7ZlIxoOKsZaI5MZ6VpX2VadBHEheo3i_z8eWegFrWbg; v_sid=d1f74ff8ac866d1e2fc23a98a7a08fbb; __cf_bm=Buxq2e2MUIkoIcDnY1y7U15ffmxHlJxKfuNyh_fYRCs-1739201401-1.0.1.1-tAQnEUQjFv6h5Q6U.3_islJdhY5PPeg1v_LQXIB4tVVhCTiMuH_I9y0Lv68N0A78ImN.4NiIJhVnRfC2VL8ZnVXX.AbBVQglqIvOreDmxp0; cf_clearance=qpyALwjvMYdJH0NVGRIHMjrcfyrVA3bOJZSmc3aXsQA-1739201406-1.2.1.1-Lmpslx34PiBBUlxKxT2jgy8ie3ZYJMDVMSUT4VoL3q1HE7hCFeb5x4CHAjz2NcuBfj56ks8mrbfm0dDMnQUI3ds5zyzr51MnY7yapBmgNY_0EnPs6orKi2Ho6_BigWio0f0u86XsNYX_DWDxbvsQe6stk84lTBWHh8m3Y1PkUSDCs0vFKOg.rvUjjIBc7bWqvYlqCYCzoK6FMqnO1ki8kFDSLQidWzP9thAHfLzxayZ9roRc6G91KHi08pWoDf4t2A9prA4nnOZP4ZLeYfIgV.eEyZ2LRCxL4iZyGbwML8s; v_sid=6ef23e75f93b52aeaf82e093bb991d62; viewport_size=730; datadome=ZcH3BeIsD7kpdciMrD9HeiehdE5LK8RbcIAx4Gk77lsEwzTYFDkowmTBNjHN8dDPgGQwNs4nq6xioIvyWDoPA~cGpU9RzDLzJkCGcVJ7SbeTahgSo0tMRtudHXZVgHeR; OptanonConsent=isGpcEnabled=0&datestamp=Mon+Feb+10+2025+16%3A30%3A35+GMT%2B0100+(heure+normale+d%E2%80%99Europe+centrale)&version=202312.1.0&browserGpcFlag=0&isIABGlobal=false&consentId=1acdd525-965e-458d-bf55-a7c90d80aa83&interactionCount=5&hosts=&landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A0%2CC0003%3A0%2CC0004%3A0%2CC0005%3A0%2CV2STACK42%3A0%2CC0015%3A0%2CC0035%3A0&genVendors=V2%3A0%2CV1%3A0%2C&geolocation=FR%3BIDF&AwaitingReconsent=false; _vinted_fr_session=REVzTmI0WkQ3bHJrcGc2TG1pVUVlYzRvRXRIU3JLbE1Ic1RJWDFTVFlDU3FWeW16dlM4V0lFU3ZnTm1DTVk1bDN6MEZNcGF6dzA3YUxFSEk2a0VZODEweVdCL2xJaDlKSVJBZ09aMUFscEFaVGJQWXZsVWFEYVBqNVdzMVpoUjN4RW5Hc0oxZktsWGFUc09lTVBkUTVIanA1U0pIT0pTZ2IzTW52K0VweU8rbG52UXZiZ1lJUFp4NFVYakRTWTJGK1o3TGVXYlF2djhrTE9PVE1JcU90SFdoRkN5b09rUXAwQ2RodmtKOVJZYWkrTCtRRlg3RldFd1B5d0ZOV3ExKy0tY2d1ZWViWEdZQzI4Q2RzR09XN2ltdz09--24fc141ee8ee3fcfc90cb61c66cf55191289c3ba; banners_ui_state=PENDING";
+const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
+const getLegoIds = () => {
+  const raw = fs.readFileSync(LEGO_IDS_FILE, 'utf8');
+  return [...new Set(JSON.parse(raw))]; // remove duplicates
+};
 
-/**
- * Scrape Vinted API for a given product
- * @param {String} productCode - Product code to search
- * @param {String} userAgent - User-Agent header
- * @param {String} cookie - Cookie header for authentication
- * @returns {Array|null} Extracted product data
- */
-const scrape = async (productCode=productCode1, userAgent =userAgent1, cookie =cookie1) => {
-  const url = `https://www.vinted.fr/api/v2/catalog/items?page=1&per_page=48&search_text=${productCode}`;
-  console.log(productCode)
-  const headers = {
-    'User-Agent': userAgent,
-    'Cookie': cookie
-  };
-
+const fetchVintedResults = async (legoId) => {
+  const url = `${BASE_URL}${legoId}`;
   try {
-    console.log(`🕵️‍♂️ Scraping Vinted for product: ${productCode}`);
-
-    const response = await fetch(url, { headers });
-
-    if (!response.ok) {
-      console.error(`❌ HTTP Error ${response.status} - ${response.statusText}`);
-      console.log(`🔍 Vérifie ton cookie et ton User-Agent`);
-      return null;
+    const res = await fetch(url, { headers: HEADERS });
+    if (!res.ok) {
+      console.error(`❌ Failed to fetch ${legoId} (HTTP ${res.status})`);
+      return [];
     }
 
-    const data = await response.json();
-    return parse(data);
+    const json = await res.json();
+    const items = json.items || [];
 
-  } catch (error) {
-    console.error(`❌ Error fetching data from Vinted:`, error.message);
-    return null;
+    return items.map(item => ({
+      legoId,
+      vintedId: item.id,
+      title: item.title,
+      url: `https://www.vinted.fr${item.path}`,
+      price: parseFloat(item.price.amount),
+      currency: item.price.currency_code,
+      totalPrice: item.total_item_price?.amount || null,
+      condition: item.status,
+      size: item.size_title,
+      image: item.photo?.url || null,
+      seller: {
+        id: item.user.id,
+        login: item.user.login,
+        profile: item.user.profile_url
+      },
+      createdAt: new Date() // timestamp pour suivi
+    }));
+  } catch (err) {
+    console.error(`❌ Error fetching ${legoId}:`, err.message);
+    return [];
   }
 };
 
-/**
- * Scrape and save the product data to a file
- * @param {String} productCode - Product code
- * @param {String} userAgent - User-Agent header
- * @param {String} cookie - Cookie header
- */
-const scrapeAndSave = async (productCode, userAgent, cookie) => {
-  const deals = await scrape(productCode, userAgent, cookie);
+const scrapeVinted = async () => {
+  console.log('🚀 Scraping Vinted for LEGO sets...');
+  const legoIds = getLegoIds();
+  const db = await connectDB();
+  const collection = db.collection('vinted'); // Assurez-vous que 'vinted' est la bonne collection
 
-  if (deals && deals.length > 0) {
-    const fileName = `vinted_data_${productCode}.json`;
-    await fs.writeFile(fileName, JSON.stringify(deals, null, 2), 'utf-8');
-    console.log(`✅ Data saved in ${fileName}`);
+  await collection.deleteMany({});
+  console.log(`🗑 Old Vinted data in "${'vinted'}" removed.`);
+
+  let allItems = [];
+
+  for (const id of legoIds) {
+    console.log(`🔍 Searching LEGO ID: ${id}`);
+    const results = await fetchVintedResults(id);
+    allItems.push(...results);
+    await delay(1000); // éviter throttling
+  }
+
+  if (allItems.length > 0) {
+    try {
+      await collection.insertMany(allItems, { ordered: false });
+      console.log(`✅ ${allItems.length} items saved in MongoDB under "${'vinted'}"`);
+    } catch (e) {
+      console.error('⚠️ Some insert errors:', e.message);
+    }
   } else {
-    console.log('❌ No data found or an error occurred.');
+    console.log('❌ No items to save');
   }
+
+  return allItems;
 };
 
-
-
-// ✅ Export des fonctions pour une utilisation externe
 module.exports = {
-  scrape,
+  scrape: scrapeVinted  // ou juste `scrape` si tu l'as nommé comme ça
 };

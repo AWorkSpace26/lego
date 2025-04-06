@@ -1,10 +1,10 @@
 const fetch = require('node-fetch');
 const cheerio = require('cheerio');
+const fs = require('fs');
 const { connectDB } = require('../db'); // MongoDB connection
 
 const BASE_URL = 'https://www.dealabs.com/groupe/lego?page=';
-const MAX_PAGES = 5; // Number of pages to scrape
-
+const MAX_PAGES = 5;
 
 const extractLegoId = (text) => {
   const match = text.match(/\b\d{5}\b/);
@@ -28,32 +28,21 @@ const parse = (data) => {
             const price = thread.price || null;
             const nextBestPrice = thread.nextBestPrice || null;
 
-            // 🔍 1. Tenter d'extraire l'ID LEGO du titre
+            // 1. Extraire le LEGO ID
             let legoId = extractLegoId(thread.title);
-
-            // 🔍 2. Sinon, tenter depuis la description HTML
             if (!legoId && thread.descriptionHtml) {
               const descText = cheerio.load(thread.descriptionHtml).text();
               legoId = extractLegoId(descText);
             }
-
-            // ❌ 3. Si aucun ID trouvé, on skip le deal
             if (!legoId) return;
 
-            // 🖼 4. Image (depuis JSON ou fallback DOM)
-            let imageUrl = thread.imageUrl || null;
-            if (!imageUrl) {
-              const imgTag = $(element).find('img.thread-image');
-              imageUrl = imgTag.attr('src') || null;
-            }
-
-            // 💸 5. Calcul de la réduction
+            // 2. Calcul de la réduction
             let discount = null;
             if (price && nextBestPrice) {
               discount = Math.round(((nextBestPrice - price) / nextBestPrice) * 100);
             }
 
-            // ✅ 6. Ajouter le deal à la liste
+            // 3. Ajouter à la liste (sans image)
             deals.push({
               legoId: legoId,
               title: thread.titleSlug,
@@ -65,7 +54,6 @@ const parse = (data) => {
               price: price,
               nextBestPrice: nextBestPrice,
               discount: discount,
-              image: imageUrl,
               isFavorite: false
             });
           }
@@ -79,12 +67,6 @@ const parse = (data) => {
   return deals;
 };
 
-
-/**
- * Scrape a single page
- * @param {Number} page - Page number
- * @returns {Array} deals
- */
 const scrapePage = async (page) => {
   const url = `${BASE_URL}${page}&hide_expired=true`;
   console.log(`🔍 Scraping ${url}...`);
@@ -108,15 +90,18 @@ const scrapePage = async (page) => {
   }
 };
 
-/**
- * Scrape the first few pages and store in MongoDB
- */
+// ✅ Nouvelle fonction : sauvegarder les LEGO IDs dans un fichier JSON
+const saveLegoIdsToFile = (deals) => {
+  const legoIds = deals.map((deal) => deal.legoId);
+  fs.writeFileSync('data.json', JSON.stringify(legoIds, null, 2), 'utf-8');
+  console.log(`💾 ${legoIds.length} LEGO IDs saved to data.json`);
+};
+
 const scrapeFirstPages = async () => {
   console.log(`🚀 Scraping the first ${MAX_PAGES} pages...`);
   const db = await connectDB();
   const collection = db.collection('dealabs');
 
-  // Step 1: Remove old deals
   await collection.deleteMany({});
   console.log('🗑 Old data removed!');
 
@@ -125,29 +110,26 @@ const scrapeFirstPages = async () => {
   for (let page = 1; page <= MAX_PAGES; page++) {
     const deals = await scrapePage(page);
     allDeals = allDeals.concat(deals);
-
-    // Pause to avoid IP blocking
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
   if (allDeals.length > 0) {
-    // Step 2: Insert new deals
     try {
       await collection.insertMany(allDeals, { ordered: false });
       console.log(`✅ ${allDeals.length} new deals saved to MongoDB`);
     } catch (err) {
       console.error('⚠️ Some deals already exist:', err.message);
     }
+
+    // 📦 Sauvegarde des LEGO IDs
+    saveLegoIdsToFile(allDeals);
   } else {
     console.log('❌ No deals found');
   }
 
-  return allDeals; // Return deals for further use
+  return allDeals;
 };
 
-/**
- * Export the scrape function for use in other files
- */
 module.exports = {
   scrape: scrapeFirstPages,
 };

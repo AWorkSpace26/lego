@@ -32,6 +32,52 @@ const fetchDeals = async (page = 1) => {
   }
 };
 
+const fetchVintedSales = async (legoId) => {
+  try {
+    const res = await fetch(`${API_BASE}/sales/search?id=${legoId}`);
+    const data = await res.json();
+    renderVintedSales(data.results || []);
+  } catch (e) {
+    console.error('❌ Vinted sales fetch error:', e);
+  }
+};
+
+const fetchVintedIndicators = async (legoId) => {
+  try {
+    const res = await fetch(`${API_BASE}/sales/stats?id=${legoId}`);
+    const stats = await res.json();
+    if (!stats.count) {
+      document.getElementById('vinted-indicators').style.display = 'none';
+      return;
+    }
+
+    const indicators = {
+      'Number of sales': stats.count,
+      'Average Price': `${stats.avg.toFixed(2)} €`,
+      'P5 sales price value': `${stats.p5.toFixed(2)} €`,
+      'P25 sales price value': `${stats.p25.toFixed(2)} €`,
+      'P50 sales price value': `${stats.p50.toFixed(2)} €`,
+      'Lifetime value': `${stats.lifetime} days`
+    };
+
+    const ul = document.getElementById('indicator-list');
+    ul.innerHTML = '';
+    for (const [key, value] of Object.entries(indicators)) {
+      const li = document.createElement('li');
+      li.textContent = `${key}: ${value}`;
+      ul.appendChild(li);
+    }
+
+    document.getElementById('vinted-indicators').style.display = 'block';
+  } catch (e) {
+    console.error('❌ Indicator fetch error:', e);
+    document.getElementById('vinted-indicators').style.display = 'none';
+  }
+};
+
+
+
+
 const pageSelect = document.getElementById('page-select');
 pageSelect.addEventListener('change', (event) => {
   const selectedPage = parseInt(event.target.value, 10);
@@ -62,16 +108,24 @@ const fetchDealByLegoId = async (legoId) => {
   }
 };
 
-const fetchVintedSales = async (legoId) => {
-  try {
-    const res = await fetch(`${API_BASE}/sales/search?id=${legoId}`);
-    const data = await res.json();
-    renderVintedSales(data.results || []);
-  } catch (error) {
-    console.error(error);
-    vintedSalesList.innerHTML = '<p>Error loading Vinted sales.</p>';
+const renderVintedSales = (sales) => {
+  const section = document.getElementById('vinted-sales');
+  const list = document.getElementById('vinted-sales-list');
+
+  if (!sales.length) {
+    section.style.display = 'none';
+    return;
   }
+
+  section.style.display = 'block';
+  list.innerHTML = sales.map(s => `
+    <div class="sale-card">
+      <a href="${s.url}" target="_blank">${s.title}</a>
+      <p>💶 ${s.price} €</p>
+    </div>
+  `).join('');
 };
+
 
 const renderDeals = (deals) => {
   if (deals.length === 0) {
@@ -99,7 +153,7 @@ const renderDeals = (deals) => {
     </div>
   `).join('');
 
-  // Boutons favoris
+ 
   document.querySelectorAll('.favorite-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const legoId = e.target.dataset.id;
@@ -122,22 +176,7 @@ const toggleFavorite = async (legoId) => {
   }
 };
 
-const renderVintedSales = (sales) => {
-  if (sales.length === 0) {
-    vintedSalesList.innerHTML = '<p>No sales found.</p>';
-    vintedSalesSection.style.display = 'none';
-    return;
-  }
 
-  vintedSalesSection.style.display = 'block';
-  vintedSalesList.innerHTML = sales.map(s => `
-    <div>
-      <strong>${s.title}</strong><br>
-      💵 Price: €${s.price}<br>
-      <a href="${s.link}" target="_blank">🔗 View Sale</a>
-    </div>
-  `).join('');
-};
 
 const populateDealIdSelect = (deals) => {
   dealIdSelect.innerHTML = `
@@ -163,11 +202,15 @@ sortSelect.addEventListener('change', async () => {
   }
 });
 dealIdSelect.addEventListener('change', async () => {
-  const selectedLegoId = dealIdSelect.value;
-  if (selectedLegoId === 'all') {
-    fetchDeals(); 
+  const legoId = dealIdSelect.value;
+  if (legoId === 'all') {
+    fetchDeals();
+    document.getElementById('vinted-indicators').style.display = 'none';
+    document.getElementById('vinted-sales').style.display = 'none';
   } else {
-    fetchDealByLegoId(selectedLegoId); 
+    fetchDealByLegoId(legoId);
+    fetchVintedSales(legoId);
+    fetchVintedIndicators(legoId);
   }
 });
 

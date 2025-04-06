@@ -146,6 +146,38 @@ const findRecentDeals = async () => {
 };
 
 
+const findSalesForLegoSetId = async (legoId) => {
+  const db = await connectDB();
+  const collection = db.collection('vinted');
+  return collection.find({ legoId }).toArray();
+};
+
+const getVintedStatsForLegoId = async (legoId) => {
+  const db = await connectDB();
+  const collection = db.collection('vinted');
+  const sales = await collection.find({ legoId, price: { $ne: null } }).sort({ createdAt: 1 }).toArray();
+
+  if (!sales.length) return {};
+
+  const prices = sales.map(s => s.price).sort((a, b) => a - b);
+  const avg = prices.reduce((sum, val) => sum + val, 0) / prices.length;
+  const p = p => prices[Math.floor((p / 100) * prices.length)];
+
+  const first = new Date(sales[0].createdAt);
+  const last = new Date(sales[sales.length - 1].createdAt);
+  const lifetime = Math.max(1, Math.ceil((last - first) / (1000 * 60 * 60 * 24)));
+
+  return {
+    count: sales.length,
+    avg,
+    p5: p(5),
+    p25: p(25),
+    p50: p(50),
+    lifetime
+  };
+};
+
+
 // 🔄 Exporte les fonctions pour les utiliser ailleurs
 module.exports = {
   connectDB,
@@ -156,4 +188,6 @@ module.exports = {
   findDealById,
   findDealByLegoId,
   findRecentDeals,
+  findSalesForLegoSetId,
+  getVintedStatsForLegoId
 };
