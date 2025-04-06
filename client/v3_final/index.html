@@ -1,5 +1,6 @@
+<!-- filepath: c:\Users\terra\OneDrive\Bureau\Cours\A4\S2\WebDesign\lego\client\v3_final\index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -36,6 +37,12 @@
             <option value="most-commented">Most Commented</option>
           </select>
         </div>
+        <div>
+          <label for="deal-id-select">Select Deal by ID:</label>
+          <select id="deal-id-select">
+            <option value="all" selected>All</option>
+          </select>
+        </div>
       </div>
     </section>
 
@@ -44,9 +51,9 @@
       <div id="deal-list" class="card-grid">Loading deals...</div>
     </section>
 
-    <section class="sales">
-      <h2>🧳 Recent Vinted Sales</h2>
-      <div id="sale-list" class="card-grid">Loading sales...</div>
+    <section class="vinted-sales" id="vinted-sales" style="display: none;">
+      <h2>🧳 Vinted Sales</h2>
+      <div id="vinted-sales-list" class="card-grid">Loading sales...</div>
     </section>
   </main>
 

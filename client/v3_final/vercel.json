@@ -1,0 +1,18 @@
+{
+    "version": 2,
+    "public": true,
+    "builds": [
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "style.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "interfaceCode.js",
+      "use": "@vercel/static"
+    }
+  ]
+  }

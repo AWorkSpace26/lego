@@ -1,10 +1,12 @@
-// Remplace bien cette URL par celle générée par ton déploiement Vercel
-const API_BASE = 'https://legoapi.vercel.app'; 
+const API_BASE = 'https://legoapi.vercel.app';
 
 const showSelect = document.getElementById('show-select');
 const sortSelect = document.getElementById('sort-select');
+const dealIdSelect = document.getElementById('deal-id-select');
 const dealList = document.getElementById('deal-list');
 const saleList = document.getElementById('sale-list');
+const vintedSalesSection = document.getElementById('vinted-sales');
+const vintedSalesList = document.getElementById('vinted-sales-list');
 
 const fetchDeals = async () => {
   const limit = showSelect.value;
@@ -14,20 +16,21 @@ const fetchDeals = async () => {
     const res = await fetch(`${API_BASE}/deals/search?limit=${limit}&filterBy=${filterBy}`);
     const data = await res.json();
     renderDeals(data.results || []);
+    populateDealIdSelect(data.results || []);
   } catch (error) {
     console.error(error);
     dealList.innerHTML = '<p>Error loading deals.</p>';
   }
 };
 
-const fetchSales = async () => {
+const fetchVintedSales = async (dealId) => {
   try {
-    const res = await fetch(`${API_BASE}/sales/search`);
+    const res = await fetch(`${API_BASE}/sales/search?id=${dealId}`);
     const data = await res.json();
-    renderSales(data.results || []);
+    renderVintedSales(data.results || []);
   } catch (error) {
     console.error(error);
-    saleList.innerHTML = '<p>Error loading sales.</p>';
+    vintedSalesList.innerHTML = '<p>Error loading Vinted sales.</p>';
   }
 };
 
@@ -38,21 +41,29 @@ const renderDeals = (deals) => {
   }
 
   dealList.innerHTML = deals.map(d => `
-    <div>
-      <strong>${d.title}</strong><br>
-      💰 Price: €${d.price || '-'} | 🔥 Discount: ${d.discount || 0}%<br>
+    <div class="deal-card">
+      <h3>${d.title}</h3>
+      <p><strong>Thread ID:</strong> ${d.threadId}</p>
+      <p><strong>Merchant:</strong> ${d.merchantName || 'Unknown'}</p>
+      <p><strong>Price:</strong> €${d.price || '-'} <small>(Next Best Price: €${d.nextBestPrice || '-'})</small></p>
+      <p><strong>Discount:</strong> ${d.discount || 0}%</p>
+      <p><strong>Published At:</strong> ${new Date(d.publishedAt).toLocaleString()}</p>
+      <p><strong>Comments:</strong> ${d.commentCount}</p>
+      <p><strong>Temperature:</strong> ${d.temperature}°</p>
       <a href="${d.link}" target="_blank">🔗 View Deal</a>
     </div>
   `).join('');
 };
 
-const renderSales = (sales) => {
+const renderVintedSales = (sales) => {
   if (sales.length === 0) {
-    saleList.innerHTML = '<p>No sales found.</p>';
+    vintedSalesList.innerHTML = '<p>No sales found.</p>';
+    vintedSalesSection.style.display = 'none';
     return;
   }
 
-  saleList.innerHTML = sales.map(s => `
+  vintedSalesSection.style.display = 'block';
+  vintedSalesList.innerHTML = sales.map(s => `
     <div>
       <strong>${s.title}</strong><br>
       💵 Price: €${s.price}<br>
@@ -61,10 +72,25 @@ const renderSales = (sales) => {
   `).join('');
 };
 
+const populateDealIdSelect = (deals) => {
+  dealIdSelect.innerHTML = `
+    <option value="all" selected>All</option>
+    ${deals.map(d => `<option value="${d.threadId}">${d.threadId}</option>`).join('')}
+  `;
+};
+
 // Events
 showSelect.addEventListener('change', fetchDeals);
 sortSelect.addEventListener('change', fetchDeals);
+dealIdSelect.addEventListener('change', async () => {
+  const selectedThreadId = dealIdSelect.value;
+  if (selectedThreadId === 'all') {
+    vintedSalesSection.style.display = 'none';
+    fetchDeals();
+  } else {
+    fetchVintedSales(selectedThreadId);
+  }
+});
 
 // Initial load
 fetchDeals();
-fetchSales();
