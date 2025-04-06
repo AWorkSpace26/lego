@@ -75,10 +75,7 @@ const fetchVintedIndicators = async (legoId) => {
 };
 
 const pageSelect = document.getElementById('page-select');
-pageSelect.addEventListener('change', (event) => {
-  const selectedPage = parseInt(event.target.value, 10);
-  fetchDeals(selectedPage);
-});
+
 
 const updatePagination = (pagination) => {
   currentPage = pagination.currentPage || 1;
@@ -180,17 +177,36 @@ const populateDealIdSelect = (deals) => {
   `;
 };
 
+const hideVintedSections = () => {
+  document.getElementById('vinted-indicators').style.display = 'none';
+  document.getElementById('vinted-sales').style.display = 'none';
+  document.getElementById('indicator-list').innerHTML = '';
+  document.getElementById('vinted-sales-list').innerHTML = '';
+};
+
+
 // Events
+pageSelect.addEventListener('change', (event) => {
+  const selectedPage = parseInt(event.target.value, 10);
+  hideVintedSections(); // Cache les sections quand on change de page
+  fetchDeals(selectedPage);
+});
+
 showSelect.addEventListener('change', () => {
   currentPage = 1;
 
+  // Si on est sur le filtre "favorites", on le réinitialise
   if (sortSelect.value === 'favorites') {
-    sortSelect.value = 'price-asc'; 
+    sortSelect.value = 'price-asc';
   }
 
+  hideVintedSections(); // Cache les sections si on change autre chose que LegoID
   fetchDeals(currentPage);
 });
+
 sortSelect.addEventListener('change', async () => {
+  hideVintedSections();
+
   const filterBy = sortSelect.value;
 
   if (filterBy === 'favorites') {
@@ -201,18 +217,26 @@ sortSelect.addEventListener('change', async () => {
     fetchDeals();
   }
 });
+
 dealIdSelect.addEventListener('change', async () => {
   const legoId = dealIdSelect.value;
+
   if (legoId === 'all') {
+    // Réinitialise la liste des deals
     fetchDeals();
-    document.getElementById('vinted-indicators').style.display = 'none';
-    document.getElementById('vinted-sales').style.display = 'none';
+    hideVintedSections();
+
+    // Vide les contenus
+    document.getElementById('indicator-list').innerHTML = '';
+    document.getElementById('vinted-sales-list').innerHTML = '';
   } else {
+    // Affiche les infos liées à ce Lego ID
     fetchDealByLegoId(legoId);
     fetchVintedSales(legoId);
     fetchVintedIndicators(legoId);
   }
 });
+
 
 // Initial load
 fetchDeals();
