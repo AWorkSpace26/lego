@@ -4,13 +4,14 @@ const helmet = require('helmet');
 const bodyParser = require('body-parser');
 
 const {
-  findDealById,
+  connectDB, // Importation de connectDB
   findBestDiscountDeals,
   findMostCommentedDeals,
   findDealsSortedByPrice,
   findDealsSortedByDate,
   findSalesForLegoSetId,
-  findRecentSales
+  findRecentSales,
+  findDealByLegoId
 } = require('./db'); // Toutes les fonctions de db.js
 
 const PORT = 8092;
@@ -28,11 +29,9 @@ app.get('/', (req, res) => {
   res.send({ ack: true });
 });
 
-
-
-// ✔️ Recherche avancée de deals
+// ✔️ Recherche de deals
 app.get('/deals/search', async (req, res) => {
-  const { limit = 12, price, date, filterBy } = req.query;
+  const { limit = 12, price, date, filterBy, isFavorite } = req.query;
 
   try {
     let deals = [];
@@ -40,12 +39,23 @@ app.get('/deals/search', async (req, res) => {
     // Choix du filtre
     if (filterBy === 'best-discount') {
       deals = await findBestDiscountDeals();
+      deals = deals.sort((a, b) => {
+        if (a.discount === null) return 1;
+        if (b.discount === null) return -1;
+        return b.discount - a.discount;
+      });
     } else if (filterBy === 'most-commented') {
       deals = await findMostCommentedDeals();
+      deals = deals.sort((a, b) => (b.commentCount || 0) - (a.commentCount || 0));
     } else if (date) {
       deals = await findDealsSortedByDate("desc");
     } else {
       deals = await findDealsSortedByPrice("asc");
+    }
+
+    // Filtrer uniquement les favoris si demandé
+    if (isFavorite === 'true') {
+      deals = deals.filter(d => d.isFavorite === true);
     }
 
     // Filtres supplémentaires
@@ -79,7 +89,6 @@ app.get('/sales/search', async (req, res) => {
       sales = await findRecentSales();
     }
 
-    // Tri par date descendante
     sales = sales.sort((a, b) => new Date(b.published) - new Date(a.published));
 
     res.json({
@@ -93,19 +102,47 @@ app.get('/sales/search', async (req, res) => {
   }
 });
 
-// ✔️ Récupérer un deal par son ID
-app.get('/deals/:id', async (req, res) => {
-    const dealId = req.params.id;
-  
-    try {
-      const deal = await findDealById(dealId);
-      if (!deal) return res.status(404).json({ error: 'Deal not found' });
-      res.json(deal);
-    } catch (error) {
-      console.error('❌ Error GET /deals/:id', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+// ✔️ Récupérer un deal par Lego ID
+app.get('/deals/lego/:legoId', async (req, res) => {
+  const legoId = req.params.legoId;
+
+  try {
+    const deal = await findDealByLegoId(legoId);
+    if (!deal) {
+      console.error(`❌ Deal not found for Lego ID: ${legoId}`);
+      return res.status(404).json({ error: 'Deal not found' });
     }
-  });
+    res.json(deal);
+  } catch (error) {
+    console.error('❌ Error in /deals/lego/:legoId:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// ✔️ Basculer le statut des favoris
+app.patch('/deals/:id/favorite', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = await connectDB();
+    const collection = db.collection('dealabs');
+
+    const deal = await collection.findOne({ legoId: id });
+    if (!deal) {
+      return res.status(404).json({ error: 'Deal not found' });
+    }
+
+    const updatedDeal = await collection.updateOne(
+      { legoId: id },
+      { $set: { isFavorite: !deal.isFavorite } }
+    );
+
+    res.json({ success: true, isFavorite: !deal.isFavorite });
+  } catch (error) {
+    console.error('❌ Error PATCH /deals/:id/favorite', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`📡 API server running at http://localhost:${PORT}`);

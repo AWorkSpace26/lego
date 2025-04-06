@@ -19,6 +19,7 @@ const connectDB = async () => {
   return db;
 };
 
+
 /**
  * Trouve les deals avec une température > 50
  */
@@ -48,6 +49,24 @@ const findMostCommentedDeals = async () => {
     return deals;
   } catch (error) {
     console.error('❌ Erreur lors de la récupération des deals les plus commentés:', error);
+  }
+};
+
+/**
+ * Trouve un deal spécifique par son ID
+ * @param {String} dealId - ID du deal à rechercher
+ */
+const findDealById = async (dealId) => {
+  try {
+    const db = await connectDB();
+    const collection = db.collection('dealabs'); // Utilisation de la collection dealabs
+
+    const deal = await collection.findOne({ _id: new ObjectId(dealId) });
+    console.log(`✅ Deal trouvé avec l'ID: ${dealId}`);
+    return deal;
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération du deal par ID:', error);
+    throw error;
   }
 };
 
@@ -93,27 +112,17 @@ const findDealsSortedByDate = async (order = "asc") => {
  * Trouve un deal spécifique par ID
  * @param {String} dealId - ID du deal à rechercher
  */
-const findDealById = async (dealId) => {
+const findDealByLegoId = async (legoId) => {
   try {
     const db = await connectDB();
-    const collection = db.collection('dealabs'); // Utilisation de la collection dealabs
+    const collection = db.collection('dealabs'); // Assurez-vous que 'dealabs' est la bonne collection
 
-    // 🔹 Convertir en ObjectId uniquement si l'ID est valide
-    let query = { _id: dealId };
-    if (ObjectId.isValid(dealId)) {
-      query = { _id: ObjectId.createFromHexString(dealId) };
-    }
-
-    const deal = await collection.findOne(query);
-    if (!deal) {
-      console.log(`❌ Aucun deal trouvé avec l'ID ${dealId}`);
-      return null;
-    }
-
-    console.log(`✅ Deal trouvé avec l'ID ${dealId}`);
+    const deal = await collection.findOne({ legoId: legoId }); // Recherchez par legoId
+    console.log(`✅ Deal trouvé avec Lego ID: ${legoId}`);
     return deal;
   } catch (error) {
-    console.error('❌ Erreur lors de la récupération du deal par ID:', error);
+    console.error('❌ Error in findDealByLegoId:', error);
+    throw error;
   }
 };
 
@@ -136,18 +145,6 @@ const findRecentDeals = async () => {
   }
 };
 
-// 🚀 Test automatique si on exécute `node db.js`
-if (require.main === module) {
-  (async () => {
-    await findBestDiscountDeals();
-    await findMostCommentedDeals();
-    await findDealsSortedByPrice("asc");
-    await findDealsSortedByDate("desc");
-    await findDealById("67f0168e3cf40a3b845e96ad");
-    await findRecentDeals();
-    process.exit(0);
-  })();
-}
 
 // 🔄 Exporte les fonctions pour les utiliser ailleurs
 module.exports = {
@@ -157,5 +154,6 @@ module.exports = {
   findDealsSortedByPrice,
   findDealsSortedByDate,
   findDealById,
+  findDealByLegoId,
   findRecentDeals,
 };

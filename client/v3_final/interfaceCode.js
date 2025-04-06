@@ -23,9 +23,20 @@ const fetchDeals = async () => {
   }
 };
 
-const fetchVintedSales = async (dealId) => {
+const fetchDealByLegoId = async (legoId) => {
   try {
-    const res = await fetch(`${API_BASE}/sales/search?id=${dealId}`);
+    const res = await fetch(`${API_BASE}/deals/lego/${legoId}`);
+    const deal = await res.json();
+    renderDeals([deal]); // Affiche uniquement le deal correspondant
+  } catch (error) {
+    console.error(error);
+    dealList.innerHTML = '<p>Error loading deal by Lego ID.</p>';
+  }
+};
+
+const fetchVintedSales = async (legoId) => {
+  try {
+    const res = await fetch(`${API_BASE}/sales/search?id=${legoId}`);
     const data = await res.json();
     renderVintedSales(data.results || []);
   } catch (error) {
@@ -42,17 +53,41 @@ const renderDeals = (deals) => {
 
   dealList.innerHTML = deals.map(d => `
     <div class="deal-card">
-      <h3>${d.title}</h3>
-      <p><strong>Thread ID:</strong> ${d.threadId}</p>
+      <button class="favorite-btn" data-id="${d.legoId}">
+        ${d.isFavorite ? '❤️' : '🤍'}
+      </button>
+      <h3>${d.title.replace(/-/g, ' ')}</h3>
+      <p><strong>Lego ID:</strong> ${d.legoId}</p>
       <p><strong>Merchant:</strong> ${d.merchantName || 'Unknown'}</p>
       <p><strong>Price:</strong> €${d.price || '-'} <small>(Next Best Price: €${d.nextBestPrice || '-'})</small></p>
-      <p><strong>Discount:</strong> ${d.discount || 0}%</p>
-      <p><strong>Published At:</strong> ${new Date(d.publishedAt).toLocaleString()}</p>
-      <p><strong>Comments:</strong> ${d.commentCount}</p>
-      <p><strong>Temperature:</strong> ${d.temperature}°</p>
+      <p><strong>Discount:</strong> ${d.discount !== null ? `${d.discount}%` : 'N/A'}</p>
+      <p><strong>Published At:</strong> ${d.publishedAt ? new Date(d.publishedAt).toLocaleString() : 'N/A'}</p>
+      <p><strong>Comments:</strong> ${d.commentCount || 0}</p>
+      <p><strong>Temperature:</strong> ${d.temperature || 0}°</p>
       <a href="${d.link}" target="_blank">🔗 View Deal</a>
     </div>
   `).join('');
+
+  // Ajoutez des événements pour les boutons favoris
+  document.querySelectorAll('.favorite-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const legoId = e.target.dataset.id;
+      await toggleFavorite(legoId);
+    });
+  });
+};
+
+const toggleFavorite = async (legoId) => {
+  try {
+    const res = await fetch(`${API_BASE}/deals/${legoId}/favorite`, { method: 'PATCH' });
+    const data = await res.json();
+
+    if (data.success) {
+      fetchDeals(); // Recharge les deals pour refléter les changements
+    }
+  } catch (error) {
+    console.error('❌ Error toggling favorite:', error);
+  }
 };
 
 const renderVintedSales = (sales) => {
@@ -75,20 +110,29 @@ const renderVintedSales = (sales) => {
 const populateDealIdSelect = (deals) => {
   dealIdSelect.innerHTML = `
     <option value="all" selected>All</option>
-    ${deals.map(d => `<option value="${d.threadId}">${d.threadId}</option>`).join('')}
+    ${deals.map(d => `<option value="${d.legoId}">${d.legoId}</option>`).join('')}
   `;
 };
 
 // Events
 showSelect.addEventListener('change', fetchDeals);
-sortSelect.addEventListener('change', fetchDeals);
-dealIdSelect.addEventListener('change', async () => {
-  const selectedThreadId = dealIdSelect.value;
-  if (selectedThreadId === 'all') {
-    vintedSalesSection.style.display = 'none';
-    fetchDeals();
+sortSelect.addEventListener('change', async () => {
+  const filterBy = sortSelect.value;
+
+  if (filterBy === 'favorites') {
+    const res = await fetch(`${API_BASE}/deals/search?isFavorite=true`);
+    const data = await res.json();
+    renderDeals(data.results || []);
   } else {
-    fetchVintedSales(selectedThreadId);
+    fetchDeals();
+  }
+});
+dealIdSelect.addEventListener('change', async () => {
+  const selectedLegoId = dealIdSelect.value;
+  if (selectedLegoId === 'all') {
+    fetchDeals(); 
+  } else {
+    fetchDealByLegoId(selectedLegoId); 
   }
 });
 

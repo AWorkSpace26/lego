@@ -25,16 +25,27 @@ const parse = (data) => {
 
           // Ignore expired deals
           if (!thread.isExpired) {
+            const price = thread.price || null;
+            const nextBestPrice = thread.nextBestPrice || null;
+
+            // Calculate discount if both price and nextBestPrice are available
+            let discount = null;
+            if (price && nextBestPrice) {
+              discount = Math.round(((nextBestPrice - price) / nextBestPrice) * 100);
+            }
+
             deals.push({
-              threadId: thread.threadId,
+              legoId: thread.threadId,
               title: thread.titleSlug,
               commentCount: thread.commentCount || 0,
               temperature: thread.temperature || 0,
               publishedAt: new Date(thread.publishedAt * 1000),
               link: thread.link.startsWith('https') ? thread.link : `https://www.dealabs.com${thread.link}`,
               merchantName: thread.merchant ? thread.merchant.merchantName : null,
-              price: thread.price || null,
-              nextBestPrice: thread.nextBestPrice || null,
+              price: price,
+              nextBestPrice: nextBestPrice,
+              discount: discount, // Calculé précédemment
+              isFavorite: false // Ajout du champ favoris par défaut
             });
           }
         }
